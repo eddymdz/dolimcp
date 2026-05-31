@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "dolibarr-streamable-http": {
+      "type": "streamableHttp",
+      "url": "http://localhost:8081/custom/dolimcp/mcp.php",
+      "headers": {
+        "DOLIMCPKEY": "${env:DOLIBARR_MCP_TOKEN}"
+      }
+    }
+  }
+}

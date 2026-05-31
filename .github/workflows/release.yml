@@ -1,0 +1,57 @@
+name: Build DoliMCP Release
+
+on:
+  push:
+    tags:
+      - "*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create Dolibarr module ZIP
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+
+      - name: Build installable ZIP
+        id: build
+        run: |
+          MODULE_SLUG=dolimcp
+          ARCHIVE_NAME="${MODULE_SLUG}-${{ steps.version.outputs.tag }}.zip"
+          BUILD_DIR="build/${MODULE_SLUG}"
+          SOURCE_DIR="htdocs/custom/${MODULE_SLUG}"
+
+          if [ ! -d "${SOURCE_DIR}" ]; then
+            echo "Missing module source: ${SOURCE_DIR}"
+            exit 1
+          fi
+
+          mkdir -p "${BUILD_DIR}"
+
+          # Dolibarr expects a single top-level module folder inside the ZIP
+          # (extract into htdocs/custom/).
+          rsync -a \
+            "${SOURCE_DIR}/" \
+            "${BUILD_DIR}/"
+
+          cd build
+          zip -r "../${ARCHIVE_NAME}" "${MODULE_SLUG}"
+          cd ..
+
+          echo "archive_name=${ARCHIVE_NAME}" >> "$GITHUB_OUTPUT"
+          echo "Built ${ARCHIVE_NAME} ($(du -h "${ARCHIVE_NAME}" | cut -f1))"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: DoliMCP ${{ steps.version.outputs.tag }}
+          files: ${{ steps.build.outputs.archive_name }}
+          generate_release_notes: true

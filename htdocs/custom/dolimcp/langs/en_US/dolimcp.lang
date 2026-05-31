@@ -1,0 +1,29 @@
+# DoliMCP language file — en_US
+CHARSET=UTF-8
+
+Module104501Name = DoliMCP Bridge
+Module104501Desc = MCP Streamable HTTP for projects, tasks, time and employees
+
+DoliMCPSetup = DoliMCP setup
+DoliMCPSetupDesc = MCP Streamable HTTP is served at /custom/dolimcp/mcp.php. Each user has a dedicated MCP token (separate from the official REST API key).
+DoliMCPPrerequisites = Required modules
+DoliMCPApiKeys = MCP tokens (per user)
+DoliMCPApiKeysDesc = Open Home → Users → select a user → tab "MCP token". Tokens are auto-generated secure alphanumeric strings. Users cannot type a custom value — only Generate, Regenerate, or Revoke. The official REST API key on the user card is not modified.
+DoliMCPEndpoints = Endpoints
+DoliMCPCursor = Cursor MCP (Streamable HTTP)
+DoliMCPTransportDesc = Use header DOLIMCPKEY with the token from the user MCP tab (not DOLAPIKEY).
+
+DoliMCPUserToken = MCP token
+DoliMCPUserTokenDesc = This token is used only for AI agents connecting via DoliMCP. It is independent from the official Dolibarr REST API key. You cannot enter a custom value manually.
+DoliMCPTokenStatus = Status
+DoliMCPTokenValue = Token
+DoliMCPTokenCopyNow = Copy this token now — it will not be shown again in full.
+DoliMCPNoTokenYet = No MCP token — click Generate.
+DoliMCPGenerateToken = Generate MCP token
+DoliMCPRegenerateToken = Regenerate MCP token
+DoliMCPRevokeToken = Revoke MCP token
+DoliMCPRegenerateConfirm = The current MCP token will stop working immediately. Continue?
+DoliMCPRevokeConfirm = Revoke the MCP token for this user?
+DoliMCPTokenGenerated = MCP token generated successfully.
+DoliMCPTokenRevoked = MCP token revoked.
+DoliMCPTokenGenerateFailed = Failed to generate MCP token.
