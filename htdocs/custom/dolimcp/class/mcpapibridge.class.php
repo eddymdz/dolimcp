@@ -128,44 +128,57 @@ class DolimcpMcpApiBridge
 
 		if (strpos($path, '/projects') === 0) {
 			require_once DOL_DOCUMENT_ROOT.'/projet/class/api_projects.class.php';
-			$api = new Projects();
-			return $this->dispatchPath($api, $method, $path, $query, $body, array(
-				'/projects/alltimespent' => 'alltimespent',
-			));
+			return $this->dispatchProjects(new Projects(), $method, $path, $query, $body);
 		}
 		if (strpos($path, '/tasks') === 0) {
 			require_once DOL_DOCUMENT_ROOT.'/projet/class/api_tasks.class.php';
-			$api = new Tasks();
-			return $this->dispatchPath($api, $method, $path, $query, $body, array());
+			return $this->dispatchTasks(new Tasks(), $method, $path, $query, $body);
 		}
 		if (strpos($path, '/users') === 0) {
 			require_once DOL_DOCUMENT_ROOT.'/user/class/api_users.class.php';
-			$api = new Users();
-			return $this->dispatchPath($api, $method, $path, $query, $body, array(
-				'/users/info' => 'info',
-				'/users/groups' => 'indexGroups',
-			));
+			return $this->dispatchUsers(new Users(), $method, $path, $query, $body);
+		}
+		if (strpos($path, '/thirdparties') === 0) {
+			require_once DOL_DOCUMENT_ROOT.'/societe/class/api_thirdparties.class.php';
+			return $this->dispatchThirdparties(new Thirdparties(), $method, $path, $query, $body);
+		}
+		if (strpos($path, '/contacts') === 0) {
+			require_once DOL_DOCUMENT_ROOT.'/societe/class/api_contacts.class.php';
+			return $this->dispatchContacts(new Contacts(), $method, $path, $query, $body);
+		}
+		if (strpos($path, '/invoices') === 0) {
+			require_once DOL_DOCUMENT_ROOT.'/compta/facture/class/api_invoices.class.php';
+			return $this->dispatchInvoices(new Invoices(), $method, $path, $query, $body);
+		}
+		if (strpos($path, '/supplierinvoices') === 0) {
+			require_once DOL_DOCUMENT_ROOT.'/fourn/class/api_supplier_invoices.class.php';
+			return $this->dispatchSupplierInvoices(new SupplierInvoices(), $method, $path, $query, $body);
 		}
 		return null;
 	}
 
 	/**
-	 * @param object                   $api
+	 * @param Projects                 $api
 	 * @param string                   $method
 	 * @param string                   $path
 	 * @param array<string,mixed>      $query
 	 * @param array<string,mixed>|null $body
-	 * @param array<string,string>     $pathToMethod
 	 * @return mixed
 	 */
-	private function dispatchPath($api, $method, $path, array $query, $body, array $pathToMethod)
+	private function dispatchProjects($api, $method, $path, array $query, $body)
 	{
-		foreach ($pathToMethod as $prefix => $methodName) {
-			if ($path === $prefix || strpos($path, $prefix.'/') === 0) {
-				return $this->callApiMethod($api, $methodName, $method, $query, $body);
-			}
+		if ($method === 'GET' && $path === '/projects/alltimespent') {
+			return $api->allTimespent(
+				$query['sortfield'] ?? 't.rowid',
+				$query['sortorder'] ?? 'ASC',
+				(int) ($query['limit'] ?? 100),
+				(int) ($query['page'] ?? 0),
+				$query['sqlfilters'] ?? '',
+				$query['project_ids'] ?? '',
+				$query['task_ids'] ?? '',
+				$query['user_ids'] ?? ''
+			);
 		}
-
 		if ($method === 'GET' && preg_match('#^/projects/(\d+)$#', $path, $m)) {
 			return $api->get((int) $m[1]);
 		}
@@ -215,6 +228,19 @@ class DolimcpMcpApiBridge
 			return $api->getContacts((int) $m[1]);
 		}
 
+		throw new RestException(501, 'Native handler not implemented for '.$method.' '.$path);
+	}
+
+	/**
+	 * @param Tasks                    $api
+	 * @param string                   $method
+	 * @param string                   $path
+	 * @param array<string,mixed>      $query
+	 * @param array<string,mixed>|null $body
+	 * @return mixed
+	 */
+	private function dispatchTasks($api, $method, $path, array $query, $body)
+	{
 		if ($method === 'GET' && $path === '/tasks') {
 			return $api->index(
 				$query['sortfield'] ?? 't.rowid',
@@ -273,8 +299,24 @@ class DolimcpMcpApiBridge
 			return $api->getRoles((int) $m[1], (int) ($query['userid'] ?? 0));
 		}
 
+		throw new RestException(501, 'Native handler not implemented for '.$method.' '.$path);
+	}
+
+	/**
+	 * @param Users                    $api
+	 * @param string                   $method
+	 * @param string                   $path
+	 * @param array<string,mixed>      $query
+	 * @param array<string,mixed>|null $body
+	 * @return mixed
+	 */
+	private function dispatchUsers($api, $method, $path, array $query, $body)
+	{
 		if ($method === 'GET' && $path === '/users/info') {
 			return $api->info();
+		}
+		if ($method === 'GET' && $path === '/users/groups') {
+			return $api->listGroups((int) ($query['limit'] ?? 100), (int) ($query['page'] ?? 0));
 		}
 		if ($method === 'GET' && $path === '/users') {
 			return $api->index(
@@ -303,39 +345,335 @@ class DolimcpMcpApiBridge
 		if ($method === 'GET' && preg_match('#^/users/(\d+)/groups$#', $path, $m)) {
 			return $api->getGroups((int) $m[1]);
 		}
-		if ($method === 'GET' && $path === '/users/groups') {
-			return $api->listGroups((int) ($query['limit'] ?? 100), (int) ($query['page'] ?? 0));
+
+		throw new RestException(501, 'Native handler not implemented for '.$method.' '.$path);
+	}
+
+	/**
+	 * @param Thirdparties             $api
+	 * @param string                   $method
+	 * @param string                   $path
+	 * @param array<string,mixed>      $query
+	 * @param array<string,mixed>|null $body
+	 * @return mixed
+	 */
+	private function dispatchThirdparties($api, $method, $path, array $query, $body)
+	{
+		if ($method === 'GET' && $path === '/thirdparties') {
+			return $this->callCompatible($api, 'index', array(
+				$query['sortfield'] ?? 't.rowid',
+				$query['sortorder'] ?? 'ASC',
+				(int) ($query['limit'] ?? 100),
+				(int) ($query['page'] ?? 0),
+				(int) ($query['mode'] ?? 0),
+				(int) ($query['category'] ?? 0),
+				$query['sqlfilters'] ?? '',
+				$query['properties'] ?? '',
+				false,
+			));
+		}
+		if ($method === 'GET' && preg_match('#^/thirdparties/email/(.+)$#', $path, $m)) {
+			return $api->getByEmail(urldecode($m[1]));
+		}
+		if ($method === 'GET' && preg_match('#^/thirdparties/barcode/(.+)$#', $path, $m)) {
+			return $api->getByBarcode(urldecode($m[1]));
+		}
+		if ($method === 'GET' && preg_match('#^/thirdparties/(\d+)/outstandinginvoices$#', $path, $m)) {
+			return $api->getOutStandingInvoices((int) $m[1], $query['mode'] ?? 'customer');
+		}
+		if ($method === 'GET' && preg_match('#^/thirdparties/(\d+)$#', $path, $m)) {
+			return $api->get((int) $m[1]);
+		}
+		if ($method === 'POST' && $path === '/thirdparties') {
+			return $api->post($body);
+		}
+		if ($method === 'PUT' && preg_match('#^/thirdparties/(\d+)$#', $path, $m)) {
+			return $api->put((int) $m[1], $body);
+		}
+		if ($method === 'DELETE' && preg_match('#^/thirdparties/(\d+)$#', $path, $m)) {
+			return $api->delete((int) $m[1]);
 		}
 
 		throw new RestException(501, 'Native handler not implemented for '.$method.' '.$path);
 	}
 
 	/**
-	 * @param object $api
-	 * @param string $methodName
+	 * @param Contacts                 $api
+	 * @param string                   $method
+	 * @param string                   $path
+	 * @param array<string,mixed>      $query
+	 * @param array<string,mixed>|null $body
 	 * @return mixed
 	 */
-	private function callApiMethod($api, $methodName, $httpMethod, array $query, $body)
+	private function dispatchContacts($api, $method, $path, array $query, $body)
 	{
-		if ($methodName === 'alltimespent') {
-			return $api->allTimespent(
+		if ($method === 'GET' && $path === '/contacts') {
+			return $this->callCompatible($api, 'index', array(
 				$query['sortfield'] ?? 't.rowid',
 				$query['sortorder'] ?? 'ASC',
 				(int) ($query['limit'] ?? 100),
 				(int) ($query['page'] ?? 0),
+				$query['thirdparty_ids'] ?? '',
+				(int) ($query['category'] ?? 0),
 				$query['sqlfilters'] ?? '',
-				$query['project_ids'] ?? '',
-				$query['task_ids'] ?? '',
-				$query['user_ids'] ?? ''
+				(int) ($query['includecount'] ?? 0),
+				(int) ($query['includeroles'] ?? 0),
+				$query['properties'] ?? '',
+				false,
+			));
+		}
+		if ($method === 'GET' && preg_match('#^/contacts/email/(.+)$#', $path, $m)) {
+			return $api->getByEmail(urldecode($m[1]));
+		}
+		if ($method === 'GET' && preg_match('#^/contacts/(\d+)$#', $path, $m)) {
+			return $api->get(
+				(int) $m[1],
+				(int) ($query['includecount'] ?? 0),
+				(int) ($query['includeroles'] ?? 0)
 			);
 		}
-		if ($methodName === 'info') {
-			return $api->info();
+		if ($method === 'POST' && $path === '/contacts') {
+			return $api->post($body);
 		}
-		if ($methodName === 'indexGroups') {
-			return $api->listGroups((int) ($query['limit'] ?? 100), (int) ($query['page'] ?? 0));
+		if ($method === 'PUT' && preg_match('#^/contacts/(\d+)$#', $path, $m)) {
+			return $api->put((int) $m[1], $body);
 		}
-		throw new RestException(501, 'Unknown API method '.$methodName);
+		if ($method === 'DELETE' && preg_match('#^/contacts/(\d+)$#', $path, $m)) {
+			return $api->delete((int) $m[1]);
+		}
+
+		throw new RestException(501, 'Native handler not implemented for '.$method.' '.$path);
+	}
+
+	/**
+	 * @param Invoices                 $api
+	 * @param string                   $method
+	 * @param string                   $path
+	 * @param array<string,mixed>      $query
+	 * @param array<string,mixed>|null $body
+	 * @return mixed
+	 */
+	private function dispatchInvoices($api, $method, $path, array $query, $body)
+	{
+		if ($method === 'POST' && preg_match('#^/invoices/createfromorder/(\d+)$#', $path, $m)) {
+			return $api->createInvoiceFromOrder((int) $m[1]);
+		}
+		if ($method === 'GET' && $path === '/invoices') {
+			return $this->callCompatible($api, 'index', array(
+				$query['sortfield'] ?? 't.rowid',
+				$query['sortorder'] ?? 'ASC',
+				(int) ($query['limit'] ?? 100),
+				(int) ($query['page'] ?? 0),
+				$query['thirdparty_ids'] ?? '',
+				$query['status'] ?? '',
+				$query['sqlfilters'] ?? '',
+				$query['properties'] ?? '',
+				false,
+				(int) ($query['loadlinkedobjects'] ?? 0),
+				$this->queryBool($query, 'withLines', true),
+			));
+		}
+		if ($method === 'GET' && preg_match('#^/invoices/ref/(.+)$#', $path, $m)) {
+			return $api->getByRef(urldecode($m[1]));
+		}
+		if ($method === 'GET' && preg_match('#^/invoices/(\d+)/lines$#', $path, $m)) {
+			return $api->getLines((int) $m[1]);
+		}
+		if ($method === 'POST' && preg_match('#^/invoices/(\d+)/lines$#', $path, $m)) {
+			return $api->postLine((int) $m[1], $body);
+		}
+		if ($method === 'PUT' && preg_match('#^/invoices/(\d+)/lines/(\d+)$#', $path, $m)) {
+			return $api->putLine((int) $m[1], (int) $m[2], $body);
+		}
+		if ($method === 'DELETE' && preg_match('#^/invoices/(\d+)/lines/(\d+)$#', $path, $m)) {
+			return $api->deleteLine((int) $m[1], (int) $m[2]);
+		}
+		if ($method === 'GET' && preg_match('#^/invoices/(\d+)/payments$#', $path, $m)) {
+			return $api->getPayments((int) $m[1]);
+		}
+		if ($method === 'POST' && preg_match('#^/invoices/(\d+)/payments$#', $path, $m)) {
+			return $api->addPayment(
+				(int) $m[1],
+				$body['datepaye'] ?? '',
+				(int) ($body['paymentid'] ?? 0),
+				$body['closepaidinvoices'] ?? 'no',
+				(int) ($body['accountid'] ?? 0),
+				$body['num_payment'] ?? '',
+				$body['comment'] ?? '',
+				$body['chqemetteur'] ?? '',
+				$body['chqbank'] ?? ''
+			);
+		}
+		if ($method === 'POST' && preg_match('#^/invoices/(\d+)/validate$#', $path, $m)) {
+			return $api->validate(
+				(int) $m[1],
+				$body['force_number'] ?? '',
+				(int) ($body['idwarehouse'] ?? 0),
+				(int) ($body['notrigger'] ?? 0)
+			);
+		}
+		if ($method === 'POST' && preg_match('#^/invoices/(\d+)/settodraft$#', $path, $m)) {
+			return $api->settodraft((int) $m[1], (int) ($body['idwarehouse'] ?? -1));
+		}
+		if ($method === 'POST' && preg_match('#^/invoices/(\d+)/settopaid$#', $path, $m)) {
+			return $api->settopaid(
+				(int) $m[1],
+				$body['close_code'] ?? '',
+				$body['close_note'] ?? ''
+			);
+		}
+		if ($method === 'POST' && preg_match('#^/invoices/(\d+)/settounpaid$#', $path, $m)) {
+			return $api->settounpaid((int) $m[1]);
+		}
+		if ($method === 'GET' && preg_match('#^/invoices/(\d+)$#', $path, $m)) {
+			return $this->callCompatible($api, 'get', array(
+				(int) $m[1],
+				(int) ($query['contact_list'] ?? 1),
+				$query['properties'] ?? '',
+				$this->queryBool($query, 'withLines', true),
+			));
+		}
+		if ($method === 'POST' && $path === '/invoices') {
+			return $api->post($body);
+		}
+		if ($method === 'PUT' && preg_match('#^/invoices/(\d+)$#', $path, $m)) {
+			return $api->put((int) $m[1], $body);
+		}
+		if ($method === 'DELETE' && preg_match('#^/invoices/(\d+)$#', $path, $m)) {
+			return $api->delete((int) $m[1]);
+		}
+
+		throw new RestException(501, 'Native handler not implemented for '.$method.' '.$path);
+	}
+
+	/**
+	 * @param SupplierInvoices         $api
+	 * @param string                   $method
+	 * @param string                   $path
+	 * @param array<string,mixed>      $query
+	 * @param array<string,mixed>|null $body
+	 * @return mixed
+	 */
+	private function dispatchSupplierInvoices($api, $method, $path, array $query, $body)
+	{
+		if ($method === 'GET' && $path === '/supplierinvoices') {
+			return $this->callCompatible($api, 'index', array(
+				$query['sortfield'] ?? 't.rowid',
+				$query['sortorder'] ?? 'ASC',
+				(int) ($query['limit'] ?? 100),
+				(int) ($query['page'] ?? 0),
+				$query['thirdparty_ids'] ?? '',
+				$query['status'] ?? '',
+				$query['sqlfilters'] ?? '',
+				$query['properties'] ?? '',
+				false,
+			));
+		}
+		if ($method === 'GET' && preg_match('#^/supplierinvoices/(\d+)/lines$#', $path, $m)) {
+			return $api->getLines((int) $m[1]);
+		}
+		if ($method === 'POST' && preg_match('#^/supplierinvoices/(\d+)/lines$#', $path, $m)) {
+			return $api->postLine((int) $m[1], $body);
+		}
+		if ($method === 'PUT' && preg_match('#^/supplierinvoices/(\d+)/lines/(\d+)$#', $path, $m)) {
+			return $api->putLine((int) $m[1], (int) $m[2], $body);
+		}
+		if ($method === 'DELETE' && preg_match('#^/supplierinvoices/(\d+)/lines/(\d+)$#', $path, $m)) {
+			return $api->deleteLine((int) $m[1], (int) $m[2]);
+		}
+		if ($method === 'GET' && preg_match('#^/supplierinvoices/(\d+)/payments$#', $path, $m)) {
+			return $api->getPayments((int) $m[1]);
+		}
+		if ($method === 'POST' && preg_match('#^/supplierinvoices/(\d+)/payments$#', $path, $m)) {
+			$paymentModeId = isset($body['payment_mode_id']) ? (int) $body['payment_mode_id'] : (int) ($body['paymentid'] ?? 0);
+			$amount = array_key_exists('amount', (array) $body) ? $body['amount'] : null;
+			return $this->callCompatible($api, 'addPayment', array(
+				(int) $m[1],
+				$body['datepaye'] ?? '',
+				$paymentModeId,
+				$body['closepaidinvoices'] ?? 'no',
+				(int) ($body['accountid'] ?? 0),
+				$body['num_payment'] ?? '',
+				$body['comment'] ?? '',
+				$body['chqemetteur'] ?? '',
+				$body['chqbank'] ?? '',
+				$amount,
+			));
+		}
+		if ($method === 'POST' && preg_match('#^/supplierinvoices/(\d+)/validate$#', $path, $m)) {
+			return $api->validate(
+				(int) $m[1],
+				(int) ($body['idwarehouse'] ?? 0),
+				(int) ($body['notrigger'] ?? 0)
+			);
+		}
+		if ($method === 'POST' && preg_match('#^/supplierinvoices/(\d+)/settodraft$#', $path, $m)) {
+			return $api->settodraft(
+				(int) $m[1],
+				(int) ($body['idwarehouse'] ?? -1),
+				(int) ($body['notrigger'] ?? 0)
+			);
+		}
+		if ($method === 'GET' && preg_match('#^/supplierinvoices/(\d+)$#', $path, $m)) {
+			return $api->get((int) $m[1]);
+		}
+		if ($method === 'POST' && $path === '/supplierinvoices') {
+			return $api->post($body);
+		}
+		if ($method === 'PUT' && preg_match('#^/supplierinvoices/(\d+)$#', $path, $m)) {
+			return $api->put((int) $m[1], $body);
+		}
+		if ($method === 'DELETE' && preg_match('#^/supplierinvoices/(\d+)$#', $path, $m)) {
+			return $api->delete((int) $m[1]);
+		}
+
+		throw new RestException(501, 'Native handler not implemented for '.$method.' '.$path);
+	}
+
+	/**
+	 * @param array<string,mixed> $query
+	 * @param string              $key
+	 * @param bool                $default
+	 * @return bool
+	 */
+	private function queryBool(array $query, $key, $default = false)
+	{
+		if (!array_key_exists($key, $query)) {
+			return $default;
+		}
+		$value = $query[$key];
+		if (is_bool($value)) {
+			return $value;
+		}
+		if (is_int($value) || is_float($value)) {
+			return (bool) $value;
+		}
+		$value = strtolower(trim((string) $value));
+		if (in_array($value, array('1', 'true', 'yes', 'on'), true)) {
+			return true;
+		}
+		if (in_array($value, array('0', 'false', 'no', 'off'), true)) {
+			return false;
+		}
+		return $default;
+	}
+
+	/**
+	 * Call an API method using only as many arguments as the installed Dolibarr signature accepts.
+	 *
+	 * @param object            $api
+	 * @param string            $methodName
+	 * @param array<int,mixed>  $args
+	 * @return mixed
+	 */
+	private function callCompatible($api, $methodName, array $args)
+	{
+		$ref = new ReflectionMethod($api, $methodName);
+		$max = $ref->getNumberOfParameters();
+		if (count($args) > $max) {
+			$args = array_slice($args, 0, $max);
+		}
+		return $ref->invokeArgs($api, $args);
 	}
 
 	/**

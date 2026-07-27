@@ -22,9 +22,13 @@ print '<p>'.$langs->trans('DoliMCPSetupDesc').'</p>';
 
 print '<h3>'.$langs->trans('DoliMCPPrerequisites').'</h3>';
 print '<ul>';
-print '<li>'.($conf->global->MAIN_MODULE_API ? '✓' : '✗').' REST API (modApi)</li>';
-print '<li>'.($conf->global->MAIN_MODULE_PROJET ? '✓' : '✗').' Projects (modProjet)</li>';
-print '<li>'.($conf->global->MAIN_MODULE_USER ? '✓' : '✗').' Users (modUser)</li>';
+print '<li>'.(!empty($conf->global->MAIN_MODULE_API) ? '✓' : '✗').' REST API (modApi)</li>';
+print '<li>'.(!empty($conf->global->MAIN_MODULE_PROJET) ? '✓' : '✗').' Projects (modProjet)</li>';
+print '<li>'.(!empty($conf->global->MAIN_MODULE_USER) ? '✓' : '✗').' Users (modUser)</li>';
+print '<li>'.(!empty($conf->global->MAIN_MODULE_SOCIETE) ? '✓' : '✗').' Third parties (modSociete)</li>';
+print '<li>'.(!empty($conf->global->MAIN_MODULE_FACTURE) ? '✓' : '✗').' Invoices (modFacture) — customer invoices</li>';
+print '<li>'.(!empty($conf->global->MAIN_MODULE_FOURNISSEUR) ? '✓' : '✗').' Suppliers (modFournisseur) — supplier invoices</li>';
+print '<li>'.(!empty($conf->global->MAIN_MODULE_BANQUE) ? '✓' : '✗').' Banks (modBanque) — payments</li>';
 print '</ul>';
 
 print '<h3>'.$langs->trans('DoliMCPApiKeys').'</h3>';

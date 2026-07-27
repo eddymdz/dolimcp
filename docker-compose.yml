@@ -44,7 +44,7 @@ services:
       DOLI_ADMIN_PASSWORD: ${DOLI_ADMIN_PASSWORD:-admin}
       DOLI_COMPANY_NAME: ${DOLI_COMPANY_NAME:-Demo Company}
       DOLI_COMPANY_COUNTRYCODE: ${DOLI_COMPANY_COUNTRYCODE:-US}
-      DOLI_ENABLE_MODULES: ${DOLI_ENABLE_MODULES:-Api,Projet,User,Hrm}
+      DOLI_ENABLE_MODULES: ${DOLI_ENABLE_MODULES:-Api,Projet,User,Hrm,Societe,Facture,Fournisseur,Banque}
       WWW_USER_ID: ${WWW_USER_ID:-1000}
       WWW_GROUP_ID: ${WWW_GROUP_ID:-1000}
     volumes:

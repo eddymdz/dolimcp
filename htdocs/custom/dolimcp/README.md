@@ -1,6 +1,6 @@
 # DoliMCP — Dolibarr custom module
 
-MCP **Streamable HTTP** server embedded in Dolibarr.
+MCP **Streamable HTTP** server embedded in Dolibarr (v0.4.0).
 
 ## Endpoint
 
@@ -10,7 +10,19 @@ MCP **Streamable HTTP** server embedded in Dolibarr.
 
 1. Copy this folder to `htdocs/custom/dolimcp` (or use the repo Docker volume mount).
 2. Enable module: **Home → Setup → Modules → DoliMCP Bridge**.
-3. Ensure **REST API**, **Projects**, and **Users** modules are enabled.
+3. Ensure **REST API**, **Projects**, **Users**, and **Third parties** are enabled.
+4. For finance tools: enable **Invoices**, **Suppliers**, and **Banks**.
+
+## Tool groups
+
+| Group | Examples |
+|-------|----------|
+| Projects / tasks / time | `dolibarr_create_project`, `dolibarr_add_task_timespent`, … |
+| Users | `dolibarr_list_employees`, `dolibarr_get_current_user`, … |
+| Third parties | `dolibarr_create_thirdparty`, `dolibarr_list_customers`, `dolibarr_list_suppliers`, … |
+| Contacts | `dolibarr_create_contact`, `dolibarr_list_contacts`, … |
+| Customer invoices | `dolibarr_create_invoice`, `dolibarr_add_invoice_line`, `dolibarr_add_invoice_payment`, … |
+| Supplier invoices | `dolibarr_create_supplier_invoice`, `dolibarr_validate_supplier_invoice`, … |
 
 ## Cursor configuration
 
@@ -20,7 +32,7 @@ MCP **Streamable HTTP** server embedded in Dolibarr.
     "dolibarr-streamable-http": {
       "url": "https://YOUR-DOLIBARR/custom/dolimcp/mcp.php",
       "headers": {
-        "DOLAPIKEY": "${env:DOLIBARR_API_KEY}"
+        "DOLIMCPKEY": "${env:DOLIBARR_MCP_TOKEN}"
       }
     }
   }
@@ -29,4 +41,4 @@ MCP **Streamable HTTP** server embedded in Dolibarr.
 
 ## Extend tools
 
-Edit `class/mcptoolregistry.class.php` (schemas + REST routes) and test via Dolibarr REST explorer.
+Edit `class/mcptoolregistry.class.php` (schemas + REST routes) and `class/mcpapibridge.class.php` (native dispatch). Test via Dolibarr REST explorer.

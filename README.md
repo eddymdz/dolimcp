@@ -1,6 +1,6 @@
 # DoliMCP — Dolibarr MCP extension for AI agents
 
-Expose Dolibarr **projects**, **tasks**, **time reporting**, and **employee/user management** to AI agents via **MCP Streamable HTTP**, served **inside your Dolibarr instance** (no separate MCP container).
+Expose Dolibarr **projects**, **tasks**, **time reporting**, **employees**, **third parties**, and **invoices** (customer & supplier) to AI agents via **MCP Streamable HTTP**, served **inside your Dolibarr instance** (no separate MCP container).
 
 Each user connects with their own **DOLIMCPKEY** (MCP-only token from the user card); Dolibarr enforces roles on every tool call. The official REST API key is unchanged.
 
@@ -71,7 +71,7 @@ Health check: `GET http://localhost:8081/custom/dolimcp/mcp.php`
 cp -r htdocs/custom/dolimcp /var/www/html/custom/dolimcp
 ```
 
-Enable **REST API**, **Projects**, **Users**, then enable **DoliMCP Bridge** in modules.
+Enable **REST API**, **Projects**, **Users**, **Third parties**, then enable **DoliMCP Bridge** in modules. For finance tools also enable **Invoices**, **Suppliers**, and **Banks** as needed.
 
 MCP endpoint: `https://your-dolibarr.example.com/custom/dolimcp/mcp.php`
 
@@ -96,7 +96,7 @@ If Dolibarr is in a subfolder, include it (for example `https://your-domain.com/
 | **Dolibarr** | Version **17.0+** |
 | **PHP** | **7.4+** (8.x recommended) |
 | **HTTPS** | Strongly recommended in production (MCP token is sent in headers) |
-| **Dolibarr modules** | **REST API**, **Projects**, **Users** (required) |
+| **Dolibarr modules** | **REST API**, **Projects**, **Users**, **Third parties** (required). **Invoices** / **Suppliers** / **Banks** for finance tools. |
 | **Custom modules** | Host must allow a writable `htdocs/custom/` directory |
 
 ### 1. Back up production
@@ -142,7 +142,7 @@ If activation fails or MCP reports session errors, fix permissions on `documents
 Log in as **admin**:
 
 1. **Home → Setup → Modules/Applications**
-2. Enable **REST API**, **Projects**, and **Users** (if not already enabled).
+2. Enable **REST API**, **Projects**, **Users**, and **Third parties** (if not already enabled). For invoices, also enable **Invoices** / **Suppliers** / **Banks**.
 3. Enable **DoliMCP Bridge** (family *Interface*).
 
 Activation creates the `llx_dolimcp_token` table for MCP tokens.
@@ -220,7 +220,7 @@ See **[doc/updating-dolimcp.md](doc/updating-dolimcp.md)** for the full upgrade 
 - [ ] Dolibarr 17+ with writable `custom/`
 - [ ] Uploaded `htdocs/custom/dolimcp/`
 - [ ] `documents/` writable
-- [ ] Enabled REST API, Projects, Users, DoliMCP Bridge
+- [ ] Enabled REST API, Projects, Users, Third parties, DoliMCP Bridge (plus Invoices/Suppliers/Banks for finance)
 - [ ] Health `GET` on `mcp.php` returns `"status":"ok"`
 - [ ] MCP token generated per user
 - [ ] Cursor `url` uses production HTTPS + `DOLIMCPKEY`
@@ -228,7 +228,17 @@ See **[doc/updating-dolimcp.md](doc/updating-dolimcp.md)** for the full upgrade 
 
 ## MCP tools
 
-35 tools covering projects, tasks, time spent, and users/employees. Add more in `class/mcptoolregistry.class.php` and `class/mcpapibridge.class.php`.
+**81 tools** covering projects, tasks, time spent, users/employees, third parties/contacts, and customer/supplier invoices (including lines and payments). Add more in `class/mcptoolregistry.class.php` and `class/mcpapibridge.class.php`.
+
+### Highlights
+
+| Area | Key tools |
+|------|-----------|
+| Projects | `dolibarr_create_project`, `dolibarr_validate_project`, … |
+| Third parties | `dolibarr_create_thirdparty`, `dolibarr_list_customers`, `dolibarr_list_suppliers` |
+| Contacts | `dolibarr_create_contact` |
+| Customer invoices | `dolibarr_create_invoice`, `dolibarr_add_invoice_line`, `dolibarr_validate_invoice`, `dolibarr_add_invoice_payment` |
+| Supplier invoices | `dolibarr_create_supplier_invoice`, `dolibarr_add_supplier_invoice_payment` |
 
 ## Permissions
 
@@ -254,11 +264,11 @@ dolibarr/
 Push a **git tag** to build an installable module ZIP via GitHub Actions (see `.github/workflows/release.yml`):
 
 ```bash
-git tag v0.3.0
-git push origin v0.3.0
+git tag v0.4.0
+git push origin v0.4.0
 ```
 
-The workflow uploads `dolimcp-v0.3.0.zip` to a GitHub Release. Unzip into Dolibarr’s `htdocs/custom/` so you get `htdocs/custom/dolimcp/`.
+The workflow uploads `dolimcp-v0.4.0.zip` to a GitHub Release. Unzip into Dolibarr’s `htdocs/custom/` so you get `htdocs/custom/dolimcp/`.
 
 After installing or upgrading a release, follow **[doc/updating-dolimcp.md](doc/updating-dolimcp.md)**.
 

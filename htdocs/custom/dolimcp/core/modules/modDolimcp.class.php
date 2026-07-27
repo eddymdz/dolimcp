@@ -27,10 +27,10 @@ class modDolimcp extends DolibarrModules
 		$this->module_position = '90';
 		$this->name = preg_replace('/^mod/i', '', get_class($this));
 		$this->description = "DoliMCPBridge";
-		$this->descriptionlong = "MCP Streamable HTTP endpoint for AI agents (projects, tasks, time, employees).";
+		$this->descriptionlong = "MCP Streamable HTTP endpoint for AI agents (projects, tasks, time, employees, third parties, invoices).";
 		$this->editor_name = 'DoliMCP';
 		$this->editor_url = '';
-		$this->version = '0.3.0';
+		$this->version = '0.4.0';
 		$this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
 		$this->picto = 'technic';
 
@@ -42,7 +42,8 @@ class modDolimcp extends DolibarrModules
 
 		$this->config_page_url = array('setup.php@dolimcp');
 
-		$this->depends = array('modApi', 'modProjet', 'modUser');
+		// Facture / Fournisseur / Banque are soft: tools degrade if modules are off.
+		$this->depends = array('modApi', 'modProjet', 'modUser', 'modSociete');
 		$this->requiredby = array();
 		$this->conflictwith = array();
 		$this->langfiles = array('dolimcp@dolimcp');

@@ -54,7 +54,7 @@ Expect JSON with `"status":"ok"`. Then test an MCP tool (for example `dolibarr_l
 |----------|-------------------|
 | Module version | `$this->version` in `htdocs/custom/dolimcp/core/modules/modDolimcp.class.php` |
 | MCP server info | Keep `serverInfo.version` in `class/mcpstreamablehandler.class.php` aligned if you change it |
-| Git tags | Use tags that match the module version, for example `v0.3.0` → ZIP `dolimcp-v0.3.0.zip` |
+| Git tags | Use tags that match the module version, for example `v0.4.0` → ZIP `dolimcp-v0.4.0.zip` |
 | Dolibarr compatibility | Update `need_dolibarr_version` in `modDolimcp.class.php` when requirements change |
 | Release notes | GitHub Release + optional `CHANGELOG.md` inside the module |
 
@@ -115,6 +115,6 @@ These updates are **file replace only**.
 - [ ] `GET /custom/dolimcp/mcp.php` returns `"status":"ok"`
 - [ ] At least one MCP tool tested with a real user token
 
-## Current installs (0.3.x)
+## Current installs (0.4.x)
 
-For routine fixes in the **0.3.x** line, **replacing files is enough**; tokens and database data are kept. Disable/enable is only needed when a release note says so.
+For routine fixes in the **0.4.x** line, **replacing files is enough**; tokens and database data are kept. Disable/enable is only needed when a release note says so (for example when module dependencies change — 0.4.0 adds **Third parties** as a hard dependency).

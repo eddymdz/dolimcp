@@ -11,10 +11,30 @@ class DolimcpMcpToolRegistry
 	 */
 	public static function getTools()
 	{
+		return array_merge(
+			self::projectTools(),
+			self::taskTools(),
+			self::userTools(),
+			self::thirdpartyTools(),
+			self::contactTools(),
+			self::invoiceTools(),
+			self::supplierInvoiceTools()
+		);
+	}
+
+	/**
+	 * @return array<string,array<string,mixed>>
+	 */
+	private static function projectTools()
+	{
 		return array(
 			'dolibarr_list_projects' => self::tool('List projects visible to the API user.', array(
 				'type' => 'object',
-				'properties' => self::paginationProps(),
+				'properties' => array_merge(array(
+					'thirdparty_ids' => array('type' => 'string', 'description' => 'Comma-separated third-party IDs to filter by.'),
+					'category' => array('type' => 'integer'),
+					'properties' => array('type' => 'string', 'description' => 'Comma-separated property names to return.'),
+				), self::paginationProps()),
 			), array('GET', '/projects', 'query')),
 			'dolibarr_get_project' => self::tool('Get a project by ID.', array(
 				'type' => 'object',
@@ -26,10 +46,45 @@ class DolimcpMcpToolRegistry
 				'properties' => array('ref' => array('type' => 'string')),
 				'required' => array('ref'),
 			), array('GET', '/projects/ref/{ref}', null, array('ref'))),
-			'dolibarr_create_project' => self::tool('Create a project.', array('type' => 'object'), array('POST', '/projects', 'body')),
+			'dolibarr_create_project' => self::tool(
+				'Create a project. Required: ref (use "auto" for numbering), title. Optional: description, socid (third-party ID), date_start, date_end, public (0/1), budget_amount, opp_amount, opp_status, usage_opportunity, usage_task, usage_bill_time, note_public, note_private.',
+				array(
+					'type' => 'object',
+					'properties' => array(
+						'ref' => array('type' => 'string', 'description' => 'Project reference, or "auto" for automatic numbering.'),
+						'title' => array('type' => 'string', 'description' => 'Project title/label.'),
+						'description' => array('type' => 'string'),
+						'socid' => array('type' => 'integer', 'description' => 'Linked third-party (customer) ID.'),
+						'date_start' => array('type' => 'string', 'description' => 'Start date (YYYY-MM-DD or Unix timestamp).'),
+						'date_end' => array('type' => 'string', 'description' => 'End date (YYYY-MM-DD or Unix timestamp).'),
+						'public' => array('type' => 'integer', 'description' => '1 = public project, 0 = private.'),
+						'budget_amount' => array('type' => 'number'),
+						'opp_amount' => array('type' => 'number'),
+						'opp_status' => array('type' => 'integer'),
+						'usage_opportunity' => array('type' => 'integer'),
+						'usage_task' => array('type' => 'integer'),
+						'usage_bill_time' => array('type' => 'integer'),
+						'note_public' => array('type' => 'string'),
+						'note_private' => array('type' => 'string'),
+					),
+					'required' => array('ref', 'title'),
+				),
+				array('POST', '/projects', 'body')
+			),
 			'dolibarr_update_project' => self::tool('Update a project.', array(
 				'type' => 'object',
-				'properties' => array('id' => array('type' => 'integer')),
+				'properties' => array(
+					'id' => array('type' => 'integer'),
+					'title' => array('type' => 'string'),
+					'description' => array('type' => 'string'),
+					'socid' => array('type' => 'integer'),
+					'date_start' => array('type' => 'string'),
+					'date_end' => array('type' => 'string'),
+					'public' => array('type' => 'integer'),
+					'budget_amount' => array('type' => 'number'),
+					'note_public' => array('type' => 'string'),
+					'note_private' => array('type' => 'string'),
+				),
 				'required' => array('id'),
 			), array('PUT', '/projects/{id}', 'body', array('id'))),
 			'dolibarr_delete_project' => self::tool('Delete a project.', array(
@@ -49,7 +104,15 @@ class DolimcpMcpToolRegistry
 			), array('GET', '/projects/{project_id}/tasks', 'query', array('project_id'))),
 			'dolibarr_create_project_task' => self::tool('Create a task on a project.', array(
 				'type' => 'object',
-				'properties' => array('project_id' => array('type' => 'integer')),
+				'properties' => array(
+					'project_id' => array('type' => 'integer'),
+					'ref' => array('type' => 'string'),
+					'label' => array('type' => 'string'),
+					'description' => array('type' => 'string'),
+					'planned_workload' => array('type' => 'integer', 'description' => 'Planned workload in seconds.'),
+					'date_start' => array('type' => 'string'),
+					'date_end' => array('type' => 'string'),
+				),
 				'required' => array('project_id'),
 			), array('POST', '/projects/{project_id}/tasks', 'body', array('project_id'))),
 			'dolibarr_update_project_task' => self::tool('Update a task on a project.', array(
@@ -76,7 +139,15 @@ class DolimcpMcpToolRegistry
 				'properties' => array('project_id' => array('type' => 'integer')),
 				'required' => array('project_id'),
 			), array('GET', '/projects/{project_id}/contacts', null, array('project_id'))),
+		);
+	}
 
+	/**
+	 * @return array<string,array<string,mixed>>
+	 */
+	private static function taskTools()
+	{
+		return array(
 			'dolibarr_list_tasks' => self::tool('List tasks.', array(
 				'type' => 'object',
 				'properties' => self::paginationProps(),
@@ -86,7 +157,17 @@ class DolimcpMcpToolRegistry
 				'properties' => array('id' => array('type' => 'integer'), 'includetimespent' => array('type' => 'integer')),
 				'required' => array('id'),
 			), array('GET', '/tasks/{id}', 'query', array('id'))),
-			'dolibarr_create_task' => self::tool('Create a task (requires fk_project).', array('type' => 'object'), array('POST', '/tasks', 'body')),
+			'dolibarr_create_task' => self::tool('Create a task (requires fk_project).', array(
+				'type' => 'object',
+				'properties' => array(
+					'fk_project' => array('type' => 'integer'),
+					'ref' => array('type' => 'string'),
+					'label' => array('type' => 'string'),
+					'description' => array('type' => 'string'),
+					'planned_workload' => array('type' => 'integer'),
+				),
+				'required' => array('fk_project'),
+			), array('POST', '/tasks', 'body')),
 			'dolibarr_update_task' => self::tool('Update a task.', array(
 				'type' => 'object',
 				'properties' => array('id' => array('type' => 'integer')),
@@ -133,7 +214,15 @@ class DolimcpMcpToolRegistry
 				'properties' => array('task_id' => array('type' => 'integer'), 'user_id' => array('type' => 'integer')),
 				'required' => array('task_id'),
 			), array('GET', '/tasks/{task_id}/roles', 'query', array('task_id'))),
+		);
+	}
 
+	/**
+	 * @return array<string,array<string,mixed>>
+	 */
+	private static function userTools()
+	{
+		return array(
 			'dolibarr_list_users' => self::tool('List users.', array(
 				'type' => 'object',
 				'properties' => self::paginationProps(),
@@ -173,6 +262,502 @@ class DolimcpMcpToolRegistry
 				'type' => 'object',
 				'properties' => array('limit' => array('type' => 'integer'), 'page' => array('type' => 'integer')),
 			), array('GET', '/users/groups', 'query')),
+		);
+	}
+
+	/**
+	 * @return array<string,array<string,mixed>>
+	 */
+	private static function thirdpartyTools()
+	{
+		$thirdpartyProps = array(
+			'name' => array('type' => 'string', 'description' => 'Company / third-party name (required to create).'),
+			'name_alias' => array('type' => 'string'),
+			'email' => array('type' => 'string'),
+			'phone' => array('type' => 'string'),
+			'fax' => array('type' => 'string'),
+			'url' => array('type' => 'string', 'description' => 'Website URL.'),
+			'address' => array('type' => 'string'),
+			'zip' => array('type' => 'string'),
+			'town' => array('type' => 'string'),
+			'country_id' => array('type' => 'integer'),
+			'country_code' => array('type' => 'string', 'description' => 'ISO country code (e.g. ES, FR, US) if country_id unknown.'),
+			'state_id' => array('type' => 'integer'),
+			'client' => array('type' => 'integer', 'description' => '0=not customer, 1=customer, 2=prospect, 3=customer+prospect.'),
+			'fournisseur' => array('type' => 'integer', 'description' => '0=not supplier, 1=supplier.'),
+			'code_client' => array('type' => 'string', 'description' => 'Customer code, or "auto".'),
+			'code_fournisseur' => array('type' => 'string', 'description' => 'Supplier code, or "auto".'),
+			'tva_intra' => array('type' => 'string', 'description' => 'VAT / tax ID.'),
+			'idprof1' => array('type' => 'string'),
+			'idprof2' => array('type' => 'string'),
+			'note_public' => array('type' => 'string'),
+			'note_private' => array('type' => 'string'),
+			'status' => array('type' => 'integer', 'description' => '0=closed, 1=open.'),
+		);
+
+		return array(
+			'dolibarr_list_thirdparties' => self::tool(
+				'List third parties (companies). mode: 0=all, 1=customers, 2=prospects, 3=neither customer nor prospect, 4=suppliers.',
+				array(
+					'type' => 'object',
+					'properties' => array_merge(array(
+						'mode' => array('type' => 'integer', 'description' => '0=all, 1=customers, 2=prospects, 3=other, 4=suppliers.'),
+						'category' => array('type' => 'integer'),
+						'properties' => array('type' => 'string'),
+					), self::paginationProps()),
+				),
+				array('GET', '/thirdparties', 'query')
+			),
+			'dolibarr_list_customers' => self::tool('List customers (third parties with client flag).', array(
+				'type' => 'object',
+				'properties' => self::paginationProps(),
+			), array('GET', '/thirdparties', 'query', null, array('mode' => 1))),
+			'dolibarr_list_suppliers' => self::tool('List suppliers / providers (third parties with fournisseur=1).', array(
+				'type' => 'object',
+				'properties' => self::paginationProps(),
+			), array('GET', '/thirdparties', 'query', null, array('mode' => 4))),
+			'dolibarr_get_thirdparty' => self::tool('Get a third party by ID.', array(
+				'type' => 'object',
+				'properties' => array('id' => array('type' => 'integer')),
+				'required' => array('id'),
+			), array('GET', '/thirdparties/{id}', null, array('id'))),
+			'dolibarr_get_thirdparty_by_email' => self::tool('Get a third party by email.', array(
+				'type' => 'object',
+				'properties' => array('email' => array('type' => 'string')),
+				'required' => array('email'),
+			), array('GET', '/thirdparties/email/{email}', null, array('email'))),
+			'dolibarr_get_thirdparty_by_barcode' => self::tool('Get a third party by barcode.', array(
+				'type' => 'object',
+				'properties' => array('barcode' => array('type' => 'string')),
+				'required' => array('barcode'),
+			), array('GET', '/thirdparties/barcode/{barcode}', null, array('barcode'))),
+			'dolibarr_create_thirdparty' => self::tool(
+				'Register a third party (company, customer, supplier/provider). Set client=1 for customers, fournisseur=1 for suppliers; both can be set. Required: name.',
+				array(
+					'type' => 'object',
+					'properties' => $thirdpartyProps,
+					'required' => array('name'),
+				),
+				array('POST', '/thirdparties', 'body')
+			),
+			'dolibarr_update_thirdparty' => self::tool('Update a third party.', array(
+				'type' => 'object',
+				'properties' => array_merge(array('id' => array('type' => 'integer')), $thirdpartyProps),
+				'required' => array('id'),
+			), array('PUT', '/thirdparties/{id}', 'body', array('id'))),
+			'dolibarr_delete_thirdparty' => self::tool('Delete a third party.', array(
+				'type' => 'object',
+				'properties' => array('id' => array('type' => 'integer')),
+				'required' => array('id'),
+			), array('DELETE', '/thirdparties/{id}', null, array('id'))),
+			'dolibarr_get_thirdparty_outstanding_invoices' => self::tool('Get outstanding invoice amounts for a third party.', array(
+				'type' => 'object',
+				'properties' => array(
+					'id' => array('type' => 'integer'),
+					'mode' => array('type' => 'string', 'description' => '"customer" or "supplier".'),
+				),
+				'required' => array('id'),
+			), array('GET', '/thirdparties/{id}/outstandinginvoices', 'query', array('id'))),
+		);
+	}
+
+	/**
+	 * @return array<string,array<string,mixed>>
+	 */
+	private static function contactTools()
+	{
+		return array(
+			'dolibarr_list_contacts' => self::tool('List contact persons (people linked to third parties).', array(
+				'type' => 'object',
+				'properties' => array_merge(array(
+					'thirdparty_ids' => array('type' => 'string', 'description' => 'Comma-separated third-party IDs.'),
+					'category' => array('type' => 'integer'),
+				), self::paginationProps()),
+			), array('GET', '/contacts', 'query')),
+			'dolibarr_get_contact' => self::tool('Get a contact by ID.', array(
+				'type' => 'object',
+				'properties' => array(
+					'id' => array('type' => 'integer'),
+					'includecount' => array('type' => 'integer'),
+					'includeroles' => array('type' => 'integer'),
+				),
+				'required' => array('id'),
+			), array('GET', '/contacts/{id}', 'query', array('id'))),
+			'dolibarr_get_contact_by_email' => self::tool('Get a contact by email.', array(
+				'type' => 'object',
+				'properties' => array('email' => array('type' => 'string')),
+				'required' => array('email'),
+			), array('GET', '/contacts/email/{email}', null, array('email'))),
+			'dolibarr_create_contact' => self::tool(
+				'Create a contact person. Required: lastname. Link to a company with socid (third-party ID).',
+				array(
+					'type' => 'object',
+					'properties' => array(
+						'lastname' => array('type' => 'string'),
+						'firstname' => array('type' => 'string'),
+						'socid' => array('type' => 'integer', 'description' => 'Third-party ID to link this contact to.'),
+						'email' => array('type' => 'string'),
+						'phone_pro' => array('type' => 'string'),
+						'phone_mobile' => array('type' => 'string'),
+						'address' => array('type' => 'string'),
+						'zip' => array('type' => 'string'),
+						'town' => array('type' => 'string'),
+						'country_id' => array('type' => 'integer'),
+						'poste' => array('type' => 'string', 'description' => 'Job title.'),
+						'note_public' => array('type' => 'string'),
+						'note_private' => array('type' => 'string'),
+					),
+					'required' => array('lastname'),
+				),
+				array('POST', '/contacts', 'body')
+			),
+			'dolibarr_update_contact' => self::tool('Update a contact person.', array(
+				'type' => 'object',
+				'properties' => array(
+					'id' => array('type' => 'integer'),
+					'lastname' => array('type' => 'string'),
+					'firstname' => array('type' => 'string'),
+					'socid' => array('type' => 'integer'),
+					'email' => array('type' => 'string'),
+					'phone_pro' => array('type' => 'string'),
+					'phone_mobile' => array('type' => 'string'),
+					'poste' => array('type' => 'string'),
+				),
+				'required' => array('id'),
+			), array('PUT', '/contacts/{id}', 'body', array('id'))),
+			'dolibarr_delete_contact' => self::tool('Delete a contact person.', array(
+				'type' => 'object',
+				'properties' => array('id' => array('type' => 'integer')),
+				'required' => array('id'),
+			), array('DELETE', '/contacts/{id}', null, array('id'))),
+		);
+	}
+
+	/**
+	 * @return array<string,array<string,mixed>>
+	 */
+	private static function invoiceTools()
+	{
+		$lineProps = array(
+			'desc' => array('type' => 'string', 'description' => 'Line description.'),
+			'subprice' => array('type' => 'number', 'description' => 'Unit price HT.'),
+			'qty' => array('type' => 'number'),
+			'tva_tx' => array('type' => 'number', 'description' => 'VAT rate percent.'),
+			'fk_product' => array('type' => 'integer', 'description' => 'Product/service ID (optional).'),
+			'product_type' => array('type' => 'integer', 'description' => '0=product, 1=service.'),
+			'remise_percent' => array('type' => 'number'),
+			'date_start' => array('type' => 'string'),
+			'date_end' => array('type' => 'string'),
+			'label' => array('type' => 'string'),
+		);
+
+		return array(
+			'dolibarr_list_invoices' => self::tool(
+				'List customer invoices. status filter: draft, unpaid, paid, cancelled.',
+				array(
+					'type' => 'object',
+					'properties' => array_merge(array(
+						'thirdparty_ids' => array('type' => 'string', 'description' => 'Comma-separated customer IDs.'),
+						'status' => array('type' => 'string', 'description' => 'draft | unpaid | paid | cancelled'),
+						'properties' => array('type' => 'string'),
+						'withLines' => array('type' => 'boolean'),
+					), self::paginationProps()),
+				),
+				array('GET', '/invoices', 'query')
+			),
+			'dolibarr_get_invoice' => self::tool('Get a customer invoice by ID (includes lines by default).', array(
+				'type' => 'object',
+				'properties' => array(
+					'id' => array('type' => 'integer'),
+					'contact_list' => array('type' => 'integer'),
+					'properties' => array('type' => 'string'),
+					'withLines' => array('type' => 'boolean'),
+				),
+				'required' => array('id'),
+			), array('GET', '/invoices/{id}', 'query', array('id'))),
+			'dolibarr_get_invoice_by_ref' => self::tool('Get a customer invoice by reference.', array(
+				'type' => 'object',
+				'properties' => array('ref' => array('type' => 'string')),
+				'required' => array('ref'),
+			), array('GET', '/invoices/ref/{ref}', null, array('ref'))),
+			'dolibarr_create_invoice' => self::tool(
+				'Create a customer invoice. Required: socid (third-party ID). Optional: date, type (0=standard, 2=credit note, 3=deposit), note_public, note_private, lines[{desc,subprice,qty,tva_tx,fk_product,...}], fk_project, cond_reglement_id, mode_reglement_id.',
+				array(
+					'type' => 'object',
+					'properties' => array(
+						'socid' => array('type' => 'integer', 'description' => 'Customer third-party ID.'),
+						'date' => array('type' => 'string', 'description' => 'Invoice date (YYYY-MM-DD or Unix timestamp).'),
+						'type' => array('type' => 'integer', 'description' => '0=standard, 2=credit note, 3=deposit.'),
+						'ref_ext' => array('type' => 'string'),
+						'fk_project' => array('type' => 'integer'),
+						'note_public' => array('type' => 'string'),
+						'note_private' => array('type' => 'string'),
+						'cond_reglement_id' => array('type' => 'integer'),
+						'mode_reglement_id' => array('type' => 'integer'),
+						'lines' => array(
+							'type' => 'array',
+							'description' => 'Invoice lines to create with the invoice.',
+							'items' => array('type' => 'object', 'properties' => $lineProps),
+						),
+					),
+					'required' => array('socid'),
+				),
+				array('POST', '/invoices', 'body')
+			),
+			'dolibarr_update_invoice' => self::tool('Update a customer invoice (draft only for most fields).', array(
+				'type' => 'object',
+				'properties' => array(
+					'id' => array('type' => 'integer'),
+					'socid' => array('type' => 'integer'),
+					'date' => array('type' => 'string'),
+					'note_public' => array('type' => 'string'),
+					'note_private' => array('type' => 'string'),
+					'fk_project' => array('type' => 'integer'),
+					'cond_reglement_id' => array('type' => 'integer'),
+					'mode_reglement_id' => array('type' => 'integer'),
+				),
+				'required' => array('id'),
+			), array('PUT', '/invoices/{id}', 'body', array('id'))),
+			'dolibarr_delete_invoice' => self::tool('Delete a customer invoice.', array(
+				'type' => 'object',
+				'properties' => array('id' => array('type' => 'integer')),
+				'required' => array('id'),
+			), array('DELETE', '/invoices/{id}', null, array('id'))),
+			'dolibarr_validate_invoice' => self::tool('Validate a draft customer invoice (assigns final ref).', array(
+				'type' => 'object',
+				'properties' => array(
+					'id' => array('type' => 'integer'),
+					'force_number' => array('type' => 'string'),
+					'idwarehouse' => array('type' => 'integer'),
+					'notrigger' => array('type' => 'integer'),
+				),
+				'required' => array('id'),
+			), array('POST', '/invoices/{id}/validate', 'body', array('id'))),
+			'dolibarr_settodraft_invoice' => self::tool('Set a customer invoice back to draft.', array(
+				'type' => 'object',
+				'properties' => array(
+					'id' => array('type' => 'integer'),
+					'idwarehouse' => array('type' => 'integer'),
+				),
+				'required' => array('id'),
+			), array('POST', '/invoices/{id}/settodraft', 'body', array('id'))),
+			'dolibarr_settopaid_invoice' => self::tool('Mark a customer invoice as paid (without creating a payment record).', array(
+				'type' => 'object',
+				'properties' => array(
+					'id' => array('type' => 'integer'),
+					'close_code' => array('type' => 'string'),
+					'close_note' => array('type' => 'string'),
+				),
+				'required' => array('id'),
+			), array('POST', '/invoices/{id}/settopaid', 'body', array('id'))),
+			'dolibarr_settounpaid_invoice' => self::tool('Mark a customer invoice as unpaid.', array(
+				'type' => 'object',
+				'properties' => array('id' => array('type' => 'integer')),
+				'required' => array('id'),
+			), array('POST', '/invoices/{id}/settounpaid', null, array('id'))),
+			'dolibarr_get_invoice_lines' => self::tool('List lines of a customer invoice.', array(
+				'type' => 'object',
+				'properties' => array('id' => array('type' => 'integer')),
+				'required' => array('id'),
+			), array('GET', '/invoices/{id}/lines', null, array('id'))),
+			'dolibarr_add_invoice_line' => self::tool('Add a line to a customer invoice.', array(
+				'type' => 'object',
+				'properties' => array_merge(array('id' => array('type' => 'integer')), $lineProps),
+				'required' => array('id'),
+			), array('POST', '/invoices/{id}/lines', 'body', array('id'))),
+			'dolibarr_update_invoice_line' => self::tool('Update a line on a customer invoice.', array(
+				'type' => 'object',
+				'properties' => array_merge(array(
+					'id' => array('type' => 'integer'),
+					'lineid' => array('type' => 'integer'),
+				), $lineProps),
+				'required' => array('id', 'lineid'),
+			), array('PUT', '/invoices/{id}/lines/{lineid}', 'body', array('id', 'lineid'))),
+			'dolibarr_delete_invoice_line' => self::tool('Delete a line from a customer invoice.', array(
+				'type' => 'object',
+				'properties' => array(
+					'id' => array('type' => 'integer'),
+					'lineid' => array('type' => 'integer'),
+				),
+				'required' => array('id', 'lineid'),
+			), array('DELETE', '/invoices/{id}/lines/{lineid}', null, array('id', 'lineid'))),
+			'dolibarr_get_invoice_payments' => self::tool('List payments recorded on a customer invoice.', array(
+				'type' => 'object',
+				'properties' => array('id' => array('type' => 'integer')),
+				'required' => array('id'),
+			), array('GET', '/invoices/{id}/payments', null, array('id'))),
+			'dolibarr_add_invoice_payment' => self::tool(
+				'Register a payment on a customer invoice. Required: id, datepaye, paymentid (payment mode), closepaidinvoices (yes|no), accountid (bank account).',
+				array(
+					'type' => 'object',
+					'properties' => array(
+						'id' => array('type' => 'integer', 'description' => 'Invoice ID.'),
+						'datepaye' => array('type' => 'string', 'description' => 'Payment date.'),
+						'paymentid' => array('type' => 'integer', 'description' => 'Payment mode ID (llx_c_paiement).'),
+						'closepaidinvoices' => array('type' => 'string', 'description' => '"yes" or "no".'),
+						'accountid' => array('type' => 'integer', 'description' => 'Bank account ID.'),
+						'num_payment' => array('type' => 'string'),
+						'comment' => array('type' => 'string'),
+						'chqemetteur' => array('type' => 'string'),
+						'chqbank' => array('type' => 'string'),
+					),
+					'required' => array('id', 'datepaye', 'paymentid', 'closepaidinvoices', 'accountid'),
+				),
+				array('POST', '/invoices/{id}/payments', 'body', array('id'))
+			),
+			'dolibarr_create_invoice_from_order' => self::tool('Create a customer invoice from an existing order.', array(
+				'type' => 'object',
+				'properties' => array('orderid' => array('type' => 'integer')),
+				'required' => array('orderid'),
+			), array('POST', '/invoices/createfromorder/{orderid}', null, array('orderid'))),
+		);
+	}
+
+	/**
+	 * @return array<string,array<string,mixed>>
+	 */
+	private static function supplierInvoiceTools()
+	{
+		$lineProps = array(
+			'desc' => array('type' => 'string'),
+			'description' => array('type' => 'string'),
+			'pu_ht' => array('type' => 'number', 'description' => 'Unit price HT.'),
+			'subprice' => array('type' => 'number'),
+			'qty' => array('type' => 'number'),
+			'tva_tx' => array('type' => 'number'),
+			'fk_product' => array('type' => 'integer'),
+			'product_type' => array('type' => 'integer'),
+			'remise_percent' => array('type' => 'number'),
+		);
+
+		return array(
+			'dolibarr_list_supplier_invoices' => self::tool(
+				'List supplier / vendor invoices. status: draft, unpaid, paid, cancelled.',
+				array(
+					'type' => 'object',
+					'properties' => array_merge(array(
+						'thirdparty_ids' => array('type' => 'string'),
+						'status' => array('type' => 'string'),
+						'properties' => array('type' => 'string'),
+					), self::paginationProps()),
+				),
+				array('GET', '/supplierinvoices', 'query')
+			),
+			'dolibarr_get_supplier_invoice' => self::tool('Get a supplier invoice by ID.', array(
+				'type' => 'object',
+				'properties' => array('id' => array('type' => 'integer')),
+				'required' => array('id'),
+			), array('GET', '/supplierinvoices/{id}', null, array('id'))),
+			'dolibarr_create_supplier_invoice' => self::tool(
+				'Create a supplier invoice. Required: socid (supplier third-party ID). Recommended: ref_supplier, date. Optional lines[{description,pu_ht,qty,tva_tx,fk_product}].',
+				array(
+					'type' => 'object',
+					'properties' => array(
+						'socid' => array('type' => 'integer', 'description' => 'Supplier third-party ID.'),
+						'ref' => array('type' => 'string', 'description' => 'Internal ref, often "auto".'),
+						'ref_supplier' => array('type' => 'string', 'description' => 'Supplier invoice reference.'),
+						'date' => array('type' => 'string'),
+						'fk_project' => array('type' => 'integer'),
+						'note_public' => array('type' => 'string'),
+						'note_private' => array('type' => 'string'),
+						'cond_reglement_id' => array('type' => 'integer'),
+						'mode_reglement_id' => array('type' => 'integer'),
+						'fk_account' => array('type' => 'integer'),
+						'lines' => array(
+							'type' => 'array',
+							'items' => array('type' => 'object', 'properties' => $lineProps),
+						),
+					),
+					'required' => array('socid'),
+				),
+				array('POST', '/supplierinvoices', 'body')
+			),
+			'dolibarr_update_supplier_invoice' => self::tool('Update a supplier invoice.', array(
+				'type' => 'object',
+				'properties' => array(
+					'id' => array('type' => 'integer'),
+					'ref_supplier' => array('type' => 'string'),
+					'date' => array('type' => 'string'),
+					'note_public' => array('type' => 'string'),
+					'note_private' => array('type' => 'string'),
+					'fk_project' => array('type' => 'integer'),
+				),
+				'required' => array('id'),
+			), array('PUT', '/supplierinvoices/{id}', 'body', array('id'))),
+			'dolibarr_delete_supplier_invoice' => self::tool('Delete a supplier invoice.', array(
+				'type' => 'object',
+				'properties' => array('id' => array('type' => 'integer')),
+				'required' => array('id'),
+			), array('DELETE', '/supplierinvoices/{id}', null, array('id'))),
+			'dolibarr_validate_supplier_invoice' => self::tool('Validate a draft supplier invoice.', array(
+				'type' => 'object',
+				'properties' => array(
+					'id' => array('type' => 'integer'),
+					'idwarehouse' => array('type' => 'integer'),
+					'notrigger' => array('type' => 'integer'),
+				),
+				'required' => array('id'),
+			), array('POST', '/supplierinvoices/{id}/validate', 'body', array('id'))),
+			'dolibarr_settodraft_supplier_invoice' => self::tool('Set a supplier invoice back to draft.', array(
+				'type' => 'object',
+				'properties' => array(
+					'id' => array('type' => 'integer'),
+					'idwarehouse' => array('type' => 'integer'),
+					'notrigger' => array('type' => 'integer'),
+				),
+				'required' => array('id'),
+			), array('POST', '/supplierinvoices/{id}/settodraft', 'body', array('id'))),
+			'dolibarr_get_supplier_invoice_lines' => self::tool('List lines of a supplier invoice.', array(
+				'type' => 'object',
+				'properties' => array('id' => array('type' => 'integer')),
+				'required' => array('id'),
+			), array('GET', '/supplierinvoices/{id}/lines', null, array('id'))),
+			'dolibarr_add_supplier_invoice_line' => self::tool('Add a line to a supplier invoice.', array(
+				'type' => 'object',
+				'properties' => array_merge(array('id' => array('type' => 'integer')), $lineProps),
+				'required' => array('id'),
+			), array('POST', '/supplierinvoices/{id}/lines', 'body', array('id'))),
+			'dolibarr_update_supplier_invoice_line' => self::tool('Update a line on a supplier invoice.', array(
+				'type' => 'object',
+				'properties' => array_merge(array(
+					'id' => array('type' => 'integer'),
+					'lineid' => array('type' => 'integer'),
+				), $lineProps),
+				'required' => array('id', 'lineid'),
+			), array('PUT', '/supplierinvoices/{id}/lines/{lineid}', 'body', array('id', 'lineid'))),
+			'dolibarr_delete_supplier_invoice_line' => self::tool('Delete a line from a supplier invoice.', array(
+				'type' => 'object',
+				'properties' => array(
+					'id' => array('type' => 'integer'),
+					'lineid' => array('type' => 'integer'),
+				),
+				'required' => array('id', 'lineid'),
+			), array('DELETE', '/supplierinvoices/{id}/lines/{lineid}', null, array('id', 'lineid'))),
+			'dolibarr_get_supplier_invoice_payments' => self::tool('List payments on a supplier invoice.', array(
+				'type' => 'object',
+				'properties' => array('id' => array('type' => 'integer')),
+				'required' => array('id'),
+			), array('GET', '/supplierinvoices/{id}/payments', null, array('id'))),
+			'dolibarr_add_supplier_invoice_payment' => self::tool(
+				'Register a payment on a supplier invoice. Required: id, datepaye, payment_mode_id, closepaidinvoices, accountid.',
+				array(
+					'type' => 'object',
+					'properties' => array(
+						'id' => array('type' => 'integer'),
+						'datepaye' => array('type' => 'string'),
+						'payment_mode_id' => array('type' => 'integer'),
+						'closepaidinvoices' => array('type' => 'string', 'description' => '"yes" or "no".'),
+						'accountid' => array('type' => 'integer'),
+						'num_payment' => array('type' => 'string'),
+						'comment' => array('type' => 'string'),
+						'chqemetteur' => array('type' => 'string'),
+						'chqbank' => array('type' => 'string'),
+						'amount' => array('type' => 'number'),
+					),
+					'required' => array('id', 'datepaye', 'payment_mode_id', 'closepaidinvoices', 'accountid'),
+				),
+				array('POST', '/supplierinvoices/{id}/payments', 'body', array('id'))
+			),
 		);
 	}
 
