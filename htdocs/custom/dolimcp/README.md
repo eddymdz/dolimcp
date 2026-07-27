@@ -1,6 +1,6 @@
 # DoliMCP — Dolibarr custom module
 
-MCP **Streamable HTTP** server embedded in Dolibarr (v0.4.0).
+MCP **Streamable HTTP** server embedded in Dolibarr (v0.4.1).
 
 ## Endpoint
 
@@ -12,6 +12,7 @@ MCP **Streamable HTTP** server embedded in Dolibarr (v0.4.0).
 2. Enable module: **Home → Setup → Modules → DoliMCP Bridge**.
 3. Ensure **REST API**, **Projects**, **Users**, and **Third parties** are enabled.
 4. For finance tools: enable **Invoices**, **Suppliers**, and **Banks**.
+5. For service tools: enable **Services**.
 
 ## Tool groups
 
@@ -23,6 +24,7 @@ MCP **Streamable HTTP** server embedded in Dolibarr (v0.4.0).
 | Contacts | `dolibarr_create_contact`, `dolibarr_list_contacts`, … |
 | Customer invoices | `dolibarr_create_invoice`, `dolibarr_add_invoice_line`, `dolibarr_add_invoice_payment`, … |
 | Supplier invoices | `dolibarr_create_supplier_invoice`, `dolibarr_validate_supplier_invoice`, … |
+| Services | `dolibarr_list_services`, `dolibarr_create_service`, `dolibarr_update_service`, … |
 
 ## Cursor configuration
 

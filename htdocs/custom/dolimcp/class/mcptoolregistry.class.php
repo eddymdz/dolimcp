@@ -18,7 +18,8 @@ class DolimcpMcpToolRegistry
 			self::thirdpartyTools(),
 			self::contactTools(),
 			self::invoiceTools(),
-			self::supplierInvoiceTools()
+			self::supplierInvoiceTools(),
+			self::serviceTools()
 		);
 	}
 
@@ -758,6 +759,99 @@ class DolimcpMcpToolRegistry
 				),
 				array('POST', '/supplierinvoices/{id}/payments', 'body', array('id'))
 			),
+		);
+	}
+
+	/**
+	 * Services are products with type=1 (Dolibarr Services module / Products API mode=2).
+	 *
+	 * @return array<string,array<string,mixed>>
+	 */
+	private static function serviceTools()
+	{
+		$serviceProps = array(
+			'ref' => array('type' => 'string', 'description' => 'Service reference (required).'),
+			'label' => array('type' => 'string', 'description' => 'Service label (required).'),
+			'description' => array('type' => 'string'),
+			'price' => array('type' => 'number', 'description' => 'Selling price HT.'),
+			'price_ttc' => array('type' => 'number', 'description' => 'Selling price TTC.'),
+			'price_base_type' => array('type' => 'string', 'description' => 'HT or TTC.'),
+			'tva_tx' => array('type' => 'number', 'description' => 'VAT rate percent.'),
+			'status' => array('type' => 'integer', 'description' => '1=on sell, 0=off sell.'),
+			'status_buy' => array('type' => 'integer', 'description' => '1=can be purchased, 0=no.'),
+			'duration_value' => array('type' => 'integer', 'description' => 'Service duration value.'),
+			'duration_unit' => array('type' => 'string', 'description' => 'h, d, w, m, y.'),
+			'note_public' => array('type' => 'string'),
+			'note_private' => array('type' => 'string'),
+			'barcode' => array('type' => 'string'),
+			'fk_unit' => array('type' => 'integer'),
+			'accountancy_code_sell' => array('type' => 'string'),
+			'accountancy_code_buy' => array('type' => 'string'),
+		);
+
+		return array(
+			'dolibarr_list_services' => self::tool(
+				'List services (Products API with mode=2 / product_type=1). Requires the Services module.',
+				array(
+					'type' => 'object',
+					'properties' => array_merge(array(
+						'category' => array('type' => 'integer'),
+						'ids_only' => array('type' => 'boolean'),
+						'properties' => array('type' => 'string'),
+					), self::paginationProps()),
+				),
+				array('GET', '/products', 'query', null, array('mode' => 2))
+			),
+			'dolibarr_get_service' => self::tool('Get a service by ID (product with type=1).', array(
+				'type' => 'object',
+				'properties' => array(
+					'id' => array('type' => 'integer'),
+					'includestockdata' => array('type' => 'integer'),
+					'includesubproducts' => array('type' => 'boolean'),
+					'includeparentid' => array('type' => 'boolean'),
+					'includetrans' => array('type' => 'boolean'),
+				),
+				'required' => array('id'),
+			), array('GET', '/products/{id}', 'query', array('id'))),
+			'dolibarr_get_service_by_ref' => self::tool('Get a service by reference.', array(
+				'type' => 'object',
+				'properties' => array('ref' => array('type' => 'string')),
+				'required' => array('ref'),
+			), array('GET', '/products/ref/{ref}', null, array('ref'))),
+			'dolibarr_create_service' => self::tool(
+				'Create a service. Required: ref, label. type is forced to 1 (service). Optional: price, tva_tx, status, duration_value, duration_unit, description.',
+				array(
+					'type' => 'object',
+					'properties' => $serviceProps,
+					'required' => array('ref', 'label'),
+				),
+				array('POST', '/products', 'body', null, null, array('type' => 1))
+			),
+			'dolibarr_update_service' => self::tool(
+				'Update a service. type remains 1 (service).',
+				array(
+					'type' => 'object',
+					'properties' => array_merge(array('id' => array('type' => 'integer')), $serviceProps),
+					'required' => array('id'),
+				),
+				array('PUT', '/products/{id}', 'body', array('id'), null, array('type' => 1))
+			),
+			'dolibarr_delete_service' => self::tool('Delete a service.', array(
+				'type' => 'object',
+				'properties' => array('id' => array('type' => 'integer')),
+				'required' => array('id'),
+			), array('DELETE', '/products/{id}', null, array('id'))),
+			'dolibarr_get_service_categories' => self::tool('List categories linked to a service.', array(
+				'type' => 'object',
+				'properties' => array(
+					'id' => array('type' => 'integer'),
+					'sortfield' => array('type' => 'string'),
+					'sortorder' => array('type' => 'string'),
+					'limit' => array('type' => 'integer'),
+					'page' => array('type' => 'integer'),
+				),
+				'required' => array('id'),
+			), array('GET', '/products/{id}/categories', 'query', array('id'))),
 		);
 	}
 

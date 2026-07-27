@@ -2,7 +2,7 @@
 CHARSET=UTF-8
 
 Module104501Name = DoliMCP Bridge
-Module104501Desc = MCP Streamable HTTP for projects, tasks, time, employees, third parties and invoices
+Module104501Desc = MCP Streamable HTTP for projects, tasks, time, employees, third parties, invoices and services
 
 DoliMCPSetup = DoliMCP setup
 DoliMCPSetupDesc = MCP Streamable HTTP is served at /custom/dolimcp/mcp.php. Each user has a dedicated MCP token (separate from the official REST API key).

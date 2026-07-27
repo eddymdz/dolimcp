@@ -1,6 +1,6 @@
 # DoliMCP — Dolibarr MCP extension for AI agents
 
-Expose Dolibarr **projects**, **tasks**, **time reporting**, **employees**, **third parties**, and **invoices** (customer & supplier) to AI agents via **MCP Streamable HTTP**, served **inside your Dolibarr instance** (no separate MCP container).
+Expose Dolibarr **projects**, **tasks**, **time reporting**, **employees**, **third parties**, **invoices** (customer & supplier), and **services** to AI agents via **MCP Streamable HTTP**, served **inside your Dolibarr instance** (no separate MCP container).
 
 Each user connects with their own **DOLIMCPKEY** (MCP-only token from the user card); Dolibarr enforces roles on every tool call. The official REST API key is unchanged.
 
@@ -71,7 +71,7 @@ Health check: `GET http://localhost:8081/custom/dolimcp/mcp.php`
 cp -r htdocs/custom/dolimcp /var/www/html/custom/dolimcp
 ```
 
-Enable **REST API**, **Projects**, **Users**, **Third parties**, then enable **DoliMCP Bridge** in modules. For finance tools also enable **Invoices**, **Suppliers**, and **Banks** as needed.
+Enable **REST API**, **Projects**, **Users**, **Third parties**, then enable **DoliMCP Bridge** in modules. For finance tools also enable **Invoices**, **Suppliers**, and **Banks** as needed. For service tools enable **Services**.
 
 MCP endpoint: `https://your-dolibarr.example.com/custom/dolimcp/mcp.php`
 
@@ -228,7 +228,7 @@ See **[doc/updating-dolimcp.md](doc/updating-dolimcp.md)** for the full upgrade 
 
 ## MCP tools
 
-**81 tools** covering projects, tasks, time spent, users/employees, third parties/contacts, and customer/supplier invoices (including lines and payments). Add more in `class/mcptoolregistry.class.php` and `class/mcpapibridge.class.php`.
+**88 tools** covering projects, tasks, time spent, users/employees, third parties/contacts, customer/supplier invoices (including lines and payments), and services. Add more in `class/mcptoolregistry.class.php` and `class/mcpapibridge.class.php`.
 
 ### Highlights
 
@@ -239,6 +239,7 @@ See **[doc/updating-dolimcp.md](doc/updating-dolimcp.md)** for the full upgrade 
 | Contacts | `dolibarr_create_contact` |
 | Customer invoices | `dolibarr_create_invoice`, `dolibarr_add_invoice_line`, `dolibarr_validate_invoice`, `dolibarr_add_invoice_payment` |
 | Supplier invoices | `dolibarr_create_supplier_invoice`, `dolibarr_add_supplier_invoice_payment` |
+| Services | `dolibarr_list_services`, `dolibarr_create_service`, `dolibarr_get_service`, `dolibarr_update_service` |
 
 ## Permissions
 

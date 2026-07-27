@@ -29,6 +29,7 @@ print '<li>'.(!empty($conf->global->MAIN_MODULE_SOCIETE) ? '✓' : '✗').' Thir
 print '<li>'.(!empty($conf->global->MAIN_MODULE_FACTURE) ? '✓' : '✗').' Invoices (modFacture) — customer invoices</li>';
 print '<li>'.(!empty($conf->global->MAIN_MODULE_FOURNISSEUR) ? '✓' : '✗').' Suppliers (modFournisseur) — supplier invoices</li>';
 print '<li>'.(!empty($conf->global->MAIN_MODULE_BANQUE) ? '✓' : '✗').' Banks (modBanque) — payments</li>';
+print '<li>'.(!empty($conf->global->MAIN_MODULE_SERVICE) ? '✓' : '✗').' Services (modService)</li>';
 print '</ul>';
 
 print '<h3>'.$langs->trans('DoliMCPApiKeys').'</h3>';

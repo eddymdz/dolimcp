@@ -63,6 +63,7 @@ class DolimcpMcpApiBridge
 		$payloadMode = isset($route[2]) ? $route[2] : null;
 		$pathParamKeys = isset($route[3]) && is_array($route[3]) ? $route[3] : array();
 		$extraQuery = isset($route[4]) && is_array($route[4]) ? $route[4] : array();
+		$extraBody = isset($route[5]) && is_array($route[5]) ? $route[5] : array();
 
 		$path = $pathTemplate;
 		foreach ($pathParamKeys as $key) {
@@ -86,11 +87,15 @@ class DolimcpMcpApiBridge
 				$qkey = ($k === 'user_id') ? 'userid' : $k;
 				$query[$qkey] = $v;
 			}
+			// Forced query params (e.g. services mode=2) always win.
+			$query = array_merge($query, $extraQuery);
 		} elseif ($payloadMode === 'body') {
-			$body = $arguments;
+			$body = array_merge($extraBody, $arguments);
 			foreach ($pathParamKeys as $key) {
 				unset($body[$key]);
 			}
+			// Forced body params (e.g. service type=1) always win.
+			$body = array_merge($body, $extraBody);
 		}
 
 		try {
@@ -153,6 +158,10 @@ class DolimcpMcpApiBridge
 		if (strpos($path, '/supplierinvoices') === 0) {
 			require_once DOL_DOCUMENT_ROOT.'/fourn/class/api_supplier_invoices.class.php';
 			return $this->dispatchSupplierInvoices(new SupplierInvoices(), $method, $path, $query, $body);
+		}
+		if (strpos($path, '/products') === 0) {
+			require_once DOL_DOCUMENT_ROOT.'/product/class/api_products.class.php';
+			return $this->dispatchProducts(new Products(), $method, $path, $query, $body);
 		}
 		return null;
 	}
@@ -624,6 +633,72 @@ class DolimcpMcpApiBridge
 			return $api->put((int) $m[1], $body);
 		}
 		if ($method === 'DELETE' && preg_match('#^/supplierinvoices/(\d+)$#', $path, $m)) {
+			return $api->delete((int) $m[1]);
+		}
+
+		throw new RestException(501, 'Native handler not implemented for '.$method.' '.$path);
+	}
+
+	/**
+	 * @param Products                 $api
+	 * @param string                   $method
+	 * @param string                   $path
+	 * @param array<string,mixed>      $query
+	 * @param array<string,mixed>|null $body
+	 * @return mixed
+	 */
+	private function dispatchProducts($api, $method, $path, array $query, $body)
+	{
+		if ($method === 'GET' && $path === '/products') {
+			return $this->callCompatible($api, 'index', array(
+				$query['sortfield'] ?? 't.ref',
+				$query['sortorder'] ?? 'ASC',
+				(int) ($query['limit'] ?? 100),
+				(int) ($query['page'] ?? 0),
+				(int) ($query['mode'] ?? 0),
+				(int) ($query['category'] ?? 0),
+				$query['sqlfilters'] ?? '',
+				$this->queryBool($query, 'ids_only', false),
+				(int) ($query['variant_filter'] ?? 0),
+				false,
+				(int) ($query['includestockdata'] ?? 0),
+				$query['properties'] ?? '',
+			));
+		}
+		if ($method === 'GET' && preg_match('#^/products/ref/(.+)$#', $path, $m)) {
+			return $this->callCompatible($api, 'getByRef', array(
+				urldecode($m[1]),
+				(int) ($query['includestockdata'] ?? 0),
+				$this->queryBool($query, 'includesubproducts', false),
+				$this->queryBool($query, 'includeparentid', false),
+				$this->queryBool($query, 'includetrans', false),
+			));
+		}
+		if ($method === 'GET' && preg_match('#^/products/(\d+)/categories$#', $path, $m)) {
+			return $api->getCategories(
+				(int) $m[1],
+				$query['sortfield'] ?? 's.rowid',
+				$query['sortorder'] ?? 'ASC',
+				(int) ($query['limit'] ?? 0),
+				(int) ($query['page'] ?? 0)
+			);
+		}
+		if ($method === 'GET' && preg_match('#^/products/(\d+)$#', $path, $m)) {
+			return $this->callCompatible($api, 'get', array(
+				(int) $m[1],
+				(int) ($query['includestockdata'] ?? 0),
+				$this->queryBool($query, 'includesubproducts', false),
+				$this->queryBool($query, 'includeparentid', false),
+				$this->queryBool($query, 'includetrans', false),
+			));
+		}
+		if ($method === 'POST' && $path === '/products') {
+			return $api->post($body);
+		}
+		if ($method === 'PUT' && preg_match('#^/products/(\d+)$#', $path, $m)) {
+			return $api->put((int) $m[1], $body);
+		}
+		if ($method === 'DELETE' && preg_match('#^/products/(\d+)$#', $path, $m)) {
 			return $api->delete((int) $m[1]);
 		}
 
