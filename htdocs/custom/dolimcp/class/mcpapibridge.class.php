@@ -103,6 +103,9 @@ class DolimcpMcpApiBridge
 
 		if ($body !== null && strpos($path, '/projects') === 0 && ($method === 'POST' || $method === 'PUT')) {
 			$body = $this->normalizeProjectPayload($body);
+			if ($method === 'POST' && $path === '/projects') {
+				$body = $this->prepareProjectCreatePayload($body);
+			}
 		}
 
 		try {
@@ -119,12 +122,51 @@ class DolimcpMcpApiBridge
 				),
 			);
 		} catch (Throwable $e) {
-			$message = $e->getMessage();
-			if ($e instanceof RestException) {
-				$message = 'Dolibarr API ('.$e->getCode().'): '.$e->getMessage();
-			}
-			return $this->errorResult($message.' ['.get_class($e).']');
+			return $this->errorResult($this->formatExceptionMessage($e));
 		}
+	}
+
+	/**
+	 * Build a detailed error string from Dolibarr / Restler exceptions.
+	 *
+	 * @param Throwable $e
+	 * @return string
+	 */
+	private function formatExceptionMessage(Throwable $e)
+	{
+		$message = $e->getMessage();
+		$code = (int) $e->getCode();
+		$details = array();
+
+		if ($e instanceof RestException) {
+			$message = 'Dolibarr API ('.$code.'): '.$message;
+			if (method_exists($e, 'getDetails')) {
+				$details = $e->getDetails();
+			} elseif (method_exists($e, 'getErrorDetails')) {
+				$details = $e->getErrorDetails();
+			} elseif (property_exists($e, 'errorDetails') && !empty($e->errorDetails)) {
+				$details = $e->errorDetails;
+			} elseif (property_exists($e, 'details') && !empty($e->details)) {
+				$details = $e->details;
+			} elseif (method_exists($e, 'getErrorInfo')) {
+				$details = $e->getErrorInfo();
+			}
+		}
+
+		if (is_array($details) && !empty($details)) {
+			$flat = array();
+			array_walk_recursive($details, function ($v) use (&$flat) {
+				if ($v !== null && $v !== '') {
+					$flat[] = is_scalar($v) ? (string) $v : json_encode($v);
+				}
+			});
+			$flat = array_values(array_unique(array_filter($flat)));
+			if (!empty($flat)) {
+				$message .= ' | details: '.implode('; ', $flat);
+			}
+		}
+
+		return $message.' ['.get_class($e).']';
 	}
 
 	/**
@@ -762,6 +804,104 @@ class DolimcpMcpApiBridge
 		}
 
 		return $body;
+	}
+
+	/**
+	 * Ensure create payload works on Dolibarr versions whose REST API does not expand ref=auto.
+	 *
+	 * @param array<string,mixed> $body
+	 * @return array<string,mixed>
+	 */
+	private function prepareProjectCreatePayload(array $body)
+	{
+		if (empty($body['title']) || !is_string($body['title']) || trim($body['title']) === '') {
+			throw new RestException(400, 'title field missing (required to create a project)');
+		}
+		$body['title'] = trim($body['title']);
+
+		$ref = isset($body['ref']) ? $body['ref'] : 'auto';
+		if ($ref === '' || $ref === null || $ref === 'auto' || $ref === -1 || $ref === '-1') {
+			$body['ref'] = $this->generateProjectRef($body);
+		} else {
+			$body['ref'] = is_string($ref) ? trim($ref) : (string) $ref;
+		}
+
+		// Empty optional foreign keys break some Dolibarr versions.
+		foreach (array('socid', 'fk_project', 'opp_status', 'fk_opp_status') as $key) {
+			if (!array_key_exists($key, $body)) {
+				continue;
+			}
+			if ($body[$key] === '' || $body[$key] === null) {
+				unset($body[$key]);
+				continue;
+			}
+			$body[$key] = (int) $body[$key];
+			if ($body[$key] <= 0) {
+				unset($body[$key]);
+			}
+		}
+
+		// Never send read-only / internal fields on create.
+		foreach (array('id', 'rowid', 'entity', 'statut', 'status', 'datec', 'datem', 'lines', 'caller') as $key) {
+			unset($body[$key]);
+		}
+
+		return $body;
+	}
+
+	/**
+	 * Resolve a concrete project ref (Dolibarr numbering module, with safe fallback).
+	 *
+	 * @param array<string,mixed> $body
+	 * @return string
+	 */
+	private function generateProjectRef(array $body)
+	{
+		global $conf;
+
+		if (!class_exists('Project')) {
+			require_once DOL_DOCUMENT_ROOT.'/projet/class/project.class.php';
+		}
+
+		$defaultref = '';
+		$modele = function_exists('getDolGlobalString')
+			? getDolGlobalString('PROJECT_ADDON', 'mod_project_simple')
+			: (!empty($conf->global->PROJECT_ADDON) ? $conf->global->PROJECT_ADDON : 'mod_project_simple');
+
+		$dirmodels = array_merge(array('/'), (array) (!empty($conf->modules_parts['models']) ? $conf->modules_parts['models'] : array()));
+		foreach ($dirmodels as $reldir) {
+			$file = dol_buildpath($reldir.'core/modules/project/'.$modele.'.php', 0);
+			if (!is_string($file) || $file === '' || !file_exists($file)) {
+				continue;
+			}
+			$result = dol_include_once($reldir.'core/modules/project/'.$modele.'.php');
+			if ($result === false || !class_exists($modele)) {
+				continue;
+			}
+			$modProject = new $modele();
+			$project = new Project($this->db);
+			foreach ($body as $field => $value) {
+				if ($field === 'array_options' || !is_scalar($value)) {
+					continue;
+				}
+				$project->$field = $value;
+			}
+			if (method_exists($modProject, 'getNextValue')) {
+				$defaultref = $modProject->getNextValue(null, $project);
+			}
+			break;
+		}
+
+		if (is_numeric($defaultref) && (float) $defaultref <= 0) {
+			$defaultref = '';
+		}
+		$defaultref = is_string($defaultref) ? trim($defaultref) : '';
+		if ($defaultref === '') {
+			// Unique fallback when numbering module is unavailable.
+			$defaultref = 'PJ'.date('YmdHis').substr((string) microtime(true), -3);
+		}
+
+		return $defaultref;
 	}
 
 	/**
