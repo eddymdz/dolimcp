@@ -63,7 +63,8 @@ class DolimcpMcpApiBridge
 		$payloadMode = isset($route[2]) ? $route[2] : null;
 		$pathParamKeys = isset($route[3]) && is_array($route[3]) ? $route[3] : array();
 		$extraQuery = isset($route[4]) && is_array($route[4]) ? $route[4] : array();
-		$extraBody = isset($route[5]) && is_array($route[5]) ? $route[5] : array();
+		$defaultBody = isset($route[5]) && is_array($route[5]) ? $route[5] : array();
+		$forcedBody = isset($route[6]) && is_array($route[6]) ? $route[6] : array();
 
 		$path = $pathTemplate;
 		foreach ($pathParamKeys as $key) {
@@ -90,12 +91,18 @@ class DolimcpMcpApiBridge
 			// Forced query params (e.g. services mode=2) always win.
 			$query = array_merge($query, $extraQuery);
 		} elseif ($payloadMode === 'body') {
-			$body = array_merge($extraBody, $arguments);
+			// Defaults first, then agent args (override), then forced keys (e.g. service type=1).
+			$body = array_merge($defaultBody, $arguments);
 			foreach ($pathParamKeys as $key) {
 				unset($body[$key]);
 			}
-			// Forced body params (e.g. service type=1) always win.
-			$body = array_merge($body, $extraBody);
+			if (!empty($forcedBody)) {
+				$body = array_merge($body, $forcedBody);
+			}
+		}
+
+		if ($body !== null && strpos($path, '/projects') === 0 && ($method === 'POST' || $method === 'PUT')) {
+			$body = $this->normalizeProjectPayload($body);
 		}
 
 		try {
@@ -703,6 +710,89 @@ class DolimcpMcpApiBridge
 		}
 
 		throw new RestException(501, 'Native handler not implemented for '.$method.' '.$path);
+	}
+
+	/**
+	 * Normalize project create/update payload for Dolibarr Project API quirks.
+	 *
+	 * @param array<string,mixed>|null $body
+	 * @return array<string,mixed>|null
+	 */
+	private function normalizeProjectPayload($body)
+	{
+		if (!is_array($body)) {
+			return $body;
+		}
+
+		// Date aliases used by older clients / docs.
+		if ((!isset($body['date_start']) || $body['date_start'] === '') && isset($body['dateo']) && $body['dateo'] !== '') {
+			$body['date_start'] = $body['dateo'];
+		}
+		if ((!isset($body['date_end']) || $body['date_end'] === '') && isset($body['datee']) && $body['datee'] !== '') {
+			$body['date_end'] = $body['datee'];
+		}
+
+		// Opportunity status alias.
+		if ((!isset($body['opp_status']) || $body['opp_status'] === '' || $body['opp_status'] === null)
+			&& isset($body['fk_opp_status']) && $body['fk_opp_status'] !== '' && $body['fk_opp_status'] !== null) {
+			$body['opp_status'] = $body['fk_opp_status'];
+		}
+
+		// Status alias (Project::create reads $status).
+		if ((!isset($body['status']) || $body['status'] === '' || $body['status'] === null)
+			&& isset($body['statut']) && $body['statut'] !== '' && $body['statut'] !== null) {
+			$body['status'] = $body['statut'];
+		}
+
+		foreach (array('date_start', 'date_end', 'date_start_event', 'date_end_event', 'dateo', 'datee') as $dateKey) {
+			if (!isset($body[$dateKey]) || $body[$dateKey] === '' || $body[$dateKey] === null) {
+				continue;
+			}
+			$body[$dateKey] = $this->normalizeDateValue($body[$dateKey]);
+		}
+
+		if (isset($body['ref']) && is_string($body['ref'])) {
+			$body['ref'] = trim($body['ref']);
+			if ($body['ref'] === '') {
+				$body['ref'] = 'auto';
+			}
+		}
+		if (isset($body['title']) && is_string($body['title'])) {
+			$body['title'] = trim($body['title']);
+		}
+
+		return $body;
+	}
+
+	/**
+	 * @param mixed $value
+	 * @return mixed
+	 */
+	private function normalizeDateValue($value)
+	{
+		if (is_int($value) || is_float($value)) {
+			return (int) $value;
+		}
+		if (!is_string($value)) {
+			return $value;
+		}
+		$value = trim($value);
+		if ($value === '') {
+			return $value;
+		}
+		if (ctype_digit($value)) {
+			return (int) $value;
+		}
+		// YYYY-MM-DD or YYYY-MM-DD HH:MM:SS → Unix timestamp (UTC noon for date-only).
+		if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+			$ts = strtotime($value.' 12:00:00');
+			return $ts !== false ? $ts : $value;
+		}
+		if (preg_match('/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?$/', $value)) {
+			$ts = strtotime(str_replace('T', ' ', $value));
+			return $ts !== false ? $ts : $value;
+		}
+		return $value;
 	}
 
 	/**

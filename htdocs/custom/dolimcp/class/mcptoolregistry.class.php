@@ -48,46 +48,28 @@ class DolimcpMcpToolRegistry
 				'required' => array('ref'),
 			), array('GET', '/projects/ref/{ref}', null, array('ref'))),
 			'dolibarr_create_project' => self::tool(
-				'Create a project. Required: ref (use "auto" for numbering), title. Optional: description, socid (third-party ID), date_start, date_end, public (0/1), budget_amount, opp_amount, opp_status, usage_opportunity, usage_task, usage_bill_time, note_public, note_private.',
+				'Create a Dolibarr project (draft). Required: title. If ref is omitted it defaults to "auto" (module numbering). Link a customer with socid. After create, call dolibarr_validate_project to validate. Returns the new project ID.',
 				array(
 					'type' => 'object',
-					'properties' => array(
-						'ref' => array('type' => 'string', 'description' => 'Project reference, or "auto" for automatic numbering.'),
-						'title' => array('type' => 'string', 'description' => 'Project title/label.'),
-						'description' => array('type' => 'string'),
-						'socid' => array('type' => 'integer', 'description' => 'Linked third-party (customer) ID.'),
-						'date_start' => array('type' => 'string', 'description' => 'Start date (YYYY-MM-DD or Unix timestamp).'),
-						'date_end' => array('type' => 'string', 'description' => 'End date (YYYY-MM-DD or Unix timestamp).'),
-						'public' => array('type' => 'integer', 'description' => '1 = public project, 0 = private.'),
-						'budget_amount' => array('type' => 'number'),
-						'opp_amount' => array('type' => 'number'),
-						'opp_status' => array('type' => 'integer'),
-						'usage_opportunity' => array('type' => 'integer'),
-						'usage_task' => array('type' => 'integer'),
-						'usage_bill_time' => array('type' => 'integer'),
-						'note_public' => array('type' => 'string'),
-						'note_private' => array('type' => 'string'),
-					),
-					'required' => array('ref', 'title'),
+					'properties' => self::projectWriteProps(false),
+					'required' => array('title'),
+					'additionalProperties' => true,
 				),
-				array('POST', '/projects', 'body')
+				array('POST', '/projects', 'body', null, null, array('ref' => 'auto'))
 			),
-			'dolibarr_update_project' => self::tool('Update a project.', array(
-				'type' => 'object',
-				'properties' => array(
-					'id' => array('type' => 'integer'),
-					'title' => array('type' => 'string'),
-					'description' => array('type' => 'string'),
-					'socid' => array('type' => 'integer'),
-					'date_start' => array('type' => 'string'),
-					'date_end' => array('type' => 'string'),
-					'public' => array('type' => 'integer'),
-					'budget_amount' => array('type' => 'number'),
-					'note_public' => array('type' => 'string'),
-					'note_private' => array('type' => 'string'),
+			'dolibarr_update_project' => self::tool(
+				'Update an existing project. Pass only fields to change. id is required.',
+				array(
+					'type' => 'object',
+					'properties' => array_merge(
+						array('id' => array('type' => 'integer', 'description' => 'Project ID to update.')),
+						self::projectWriteProps(true)
+					),
+					'required' => array('id'),
+					'additionalProperties' => true,
 				),
-				'required' => array('id'),
-			), array('PUT', '/projects/{id}', 'body', array('id'))),
+				array('PUT', '/projects/{id}', 'body', array('id'))
+			),
 			'dolibarr_delete_project' => self::tool('Delete a project.', array(
 				'type' => 'object',
 				'properties' => array('id' => array('type' => 'integer')),
@@ -825,7 +807,7 @@ class DolimcpMcpToolRegistry
 					'properties' => $serviceProps,
 					'required' => array('ref', 'label'),
 				),
-				array('POST', '/products', 'body', null, null, array('type' => 1))
+				array('POST', '/products', 'body', null, null, array(), array('type' => 1))
 			),
 			'dolibarr_update_service' => self::tool(
 				'Update a service. type remains 1 (service).',
@@ -834,7 +816,7 @@ class DolimcpMcpToolRegistry
 					'properties' => array_merge(array('id' => array('type' => 'integer')), $serviceProps),
 					'required' => array('id'),
 				),
-				array('PUT', '/products/{id}', 'body', array('id'), null, array('type' => 1))
+				array('PUT', '/products/{id}', 'body', array('id'), null, array(), array('type' => 1))
 			),
 			'dolibarr_delete_service' => self::tool('Delete a service.', array(
 				'type' => 'object',
@@ -893,6 +875,174 @@ class DolimcpMcpToolRegistry
 			'description' => $description,
 			'inputSchema' => $inputSchema,
 			'route' => $route,
+		);
+	}
+
+	/**
+	 * Writable project fields for create/update tools (Dolibarr Project / REST API).
+	 *
+	 * @param bool $forUpdate When true, omit create-only hints from descriptions where useful.
+	 * @return array<string,array<string,mixed>>
+	 */
+	private static function projectWriteProps($forUpdate = false)
+	{
+		return array(
+			'ref' => array(
+				'type' => 'string',
+				'description' => $forUpdate
+					? 'Project reference.'
+					: 'Project reference. Use "auto" (default) to let Dolibarr assign the next number from the projects numbering module.',
+			),
+			'title' => array(
+				'type' => 'string',
+				'description' => 'Project label / title (mandatory on create).',
+			),
+			'description' => array(
+				'type' => 'string',
+				'description' => 'Long description of the project.',
+			),
+			'ref_ext' => array(
+				'type' => 'string',
+				'description' => 'External reference (integration key).',
+			),
+			'socid' => array(
+				'type' => 'integer',
+				'description' => 'Third-party (customer) ID to link. Use dolibarr_list_thirdparties / dolibarr_create_thirdparty first if needed.',
+			),
+			'fk_project' => array(
+				'type' => 'integer',
+				'description' => 'Parent project ID (for sub-projects), if used.',
+			),
+			'date_start' => array(
+				'type' => 'string',
+				'description' => 'Start date as YYYY-MM-DD or Unix timestamp. Alias: dateo.',
+			),
+			'date_end' => array(
+				'type' => 'string',
+				'description' => 'End date as YYYY-MM-DD or Unix timestamp. Alias: datee.',
+			),
+			'dateo' => array(
+				'type' => 'string',
+				'description' => 'Deprecated alias of date_start (YYYY-MM-DD or Unix timestamp).',
+			),
+			'datee' => array(
+				'type' => 'string',
+				'description' => 'Deprecated alias of date_end (YYYY-MM-DD or Unix timestamp).',
+			),
+			'public' => array(
+				'type' => 'integer',
+				'description' => 'Visibility: 0 = private (contacts only), 1 = public (all internal users).',
+				'enum' => array(0, 1),
+			),
+			'budget_amount' => array(
+				'type' => 'number',
+				'description' => 'Project budget amount.',
+			),
+			'opp_amount' => array(
+				'type' => 'number',
+				'description' => 'Opportunity amount (when PROJECT_USE_OPPORTUNITIES is enabled).',
+			),
+			'opp_percent' => array(
+				'type' => 'number',
+				'description' => 'Opportunity win probability percent (0–100).',
+			),
+			'opp_status' => array(
+				'type' => 'integer',
+				'description' => 'Opportunity status ID (llx_c_lead_status). Alias of fk_opp_status.',
+			),
+			'fk_opp_status' => array(
+				'type' => 'integer',
+				'description' => 'Opportunity status ID (llx_c_lead_status).',
+			),
+			'usage_opportunity' => array(
+				'type' => 'integer',
+				'description' => '1 = use as opportunity, 0 = no.',
+				'enum' => array(0, 1),
+			),
+			'usage_task' => array(
+				'type' => 'integer',
+				'description' => '1 = use tasks on this project, 0 = no.',
+				'enum' => array(0, 1),
+			),
+			'usage_bill_time' => array(
+				'type' => 'integer',
+				'description' => '1 = time spent is billable, 0 = not billable.',
+				'enum' => array(0, 1),
+			),
+			'usage_organize_event' => array(
+				'type' => 'integer',
+				'description' => '1 = use event organization features on this project, 0 = no.',
+				'enum' => array(0, 1),
+			),
+			'date_start_event' => array(
+				'type' => 'string',
+				'description' => 'Event start date (YYYY-MM-DD or Unix timestamp), when event organization is enabled.',
+			),
+			'date_end_event' => array(
+				'type' => 'string',
+				'description' => 'Event end date (YYYY-MM-DD or Unix timestamp).',
+			),
+			'location' => array(
+				'type' => 'string',
+				'description' => 'Event / project location.',
+			),
+			'accept_conference_suggestions' => array(
+				'type' => 'integer',
+				'description' => '1 = allow unknown people to suggest conferences.',
+				'enum' => array(0, 1),
+			),
+			'accept_booth_suggestions' => array(
+				'type' => 'integer',
+				'description' => '1 = allow unknown people to suggest booths.',
+				'enum' => array(0, 1),
+			),
+			'price_registration' => array(
+				'type' => 'number',
+				'description' => 'Registration price (event organization).',
+			),
+			'price_booth' => array(
+				'type' => 'number',
+				'description' => 'Booth price (event organization).',
+			),
+			'max_attendees' => array(
+				'type' => 'integer',
+				'description' => 'Maximum number of attendees (event organization).',
+			),
+			'note_public' => array(
+				'type' => 'string',
+				'description' => 'Public note (visible to customers with access).',
+			),
+			'note_private' => array(
+				'type' => 'string',
+				'description' => 'Private internal note.',
+			),
+			'model_pdf' => array(
+				'type' => 'string',
+				'description' => 'PDF template name for project documents.',
+			),
+			'email_msgid' => array(
+				'type' => 'string',
+				'description' => 'Email Message-ID when the project was created from an email.',
+			),
+			'import_key' => array(
+				'type' => 'string',
+				'description' => 'Import key (deduplication / external sync).',
+			),
+			'statut' => array(
+				'type' => 'integer',
+				'description' => 'Status: 0=draft, 1=validated/open, 2=closed. Prefer dolibarr_validate_project instead of setting this on create.',
+				'enum' => array(0, 1, 2),
+			),
+			'status' => array(
+				'type' => 'integer',
+				'description' => 'Alias of statut (0=draft, 1=open, 2=closed).',
+				'enum' => array(0, 1, 2),
+			),
+			'array_options' => array(
+				'type' => 'object',
+				'description' => 'Extrafields map, e.g. {"options_myfield": "value"}. Keys must use the options_ prefix.',
+				'additionalProperties' => true,
+			),
 		);
 	}
 
