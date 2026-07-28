@@ -1,6 +1,6 @@
 # DoliMCP — Dolibarr custom module
 
-MCP **Streamable HTTP** server embedded in Dolibarr (v0.4.2).
+MCP **Streamable HTTP** server embedded in Dolibarr (v0.4.3).
 
 ## Endpoint
 

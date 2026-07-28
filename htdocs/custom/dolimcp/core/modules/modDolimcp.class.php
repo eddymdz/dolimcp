@@ -30,7 +30,7 @@ class modDolimcp extends DolibarrModules
 		$this->descriptionlong = "MCP Streamable HTTP endpoint for AI agents (projects, tasks, time, employees, third parties, invoices, services).";
 		$this->editor_name = 'DoliMCP';
 		$this->editor_url = '';
-		$this->version = '0.4.2';
+		$this->version = '0.4.3';
 		$this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
 		$this->picto = 'technic';
 

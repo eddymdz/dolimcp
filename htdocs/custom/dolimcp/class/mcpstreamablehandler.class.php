@@ -134,11 +134,11 @@ class DolimcpMcpStreamableHandler
 			'result' => array(
 				'protocolVersion' => '2024-11-05',
 				'capabilities' => array(
-					'tools' => array('listChanged' => false),
+					'tools' => new stdClass(),
 				),
 				'serverInfo' => array(
 					'name' => 'dolibarr-dolimcp',
-					'version' => '0.4.2',
+					'version' => '0.4.3',
 				),
 			),
 		));

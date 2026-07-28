@@ -48,21 +48,138 @@ class DolimcpMcpToolRegistry
 				'required' => array('ref'),
 			), array('GET', '/projects/ref/{ref}', null, array('ref'))),
 			'dolibarr_create_project' => self::tool(
-				'Create a Dolibarr project (draft). Required: title. If ref is omitted it defaults to "auto" (module numbering). Link a customer with socid. After create, call dolibarr_validate_project to validate. Returns the new project ID.',
+				'Create a Dolibarr project (draft status). REQUIRED parameter: title (string). OPTIONAL parameters: ref (default "auto"), socid (customer third-party ID), description, date_start, date_end, public (0|1), budget_amount, opp_amount, opp_percent, opp_status, usage_opportunity, usage_task, usage_bill_time, note_public, note_private, ref_ext, fk_project, array_options. Example arguments: {"title":"Website redesign","socid":12,"date_start":"2026-08-01","date_end":"2026-12-31","public":1,"budget_amount":15000}. After create, call dolibarr_validate_project with the returned ID.',
 				array(
 					'type' => 'object',
-					'properties' => self::projectWriteProps(false),
+					'properties' => array(
+						'title' => array(
+							'type' => 'string',
+							'description' => 'REQUIRED. Project label / title.',
+						),
+						'ref' => array(
+							'type' => 'string',
+							'description' => 'Project reference. Use "auto" for automatic numbering (this is the default when omitted).',
+							'default' => 'auto',
+						),
+						'socid' => array(
+							'type' => 'integer',
+							'description' => 'Customer third-party ID to link (from dolibarr_list_thirdparties / dolibarr_create_thirdparty).',
+						),
+						'description' => array(
+							'type' => 'string',
+							'description' => 'Long project description.',
+						),
+						'date_start' => array(
+							'type' => 'string',
+							'description' => 'Start date as YYYY-MM-DD or Unix timestamp.',
+						),
+						'date_end' => array(
+							'type' => 'string',
+							'description' => 'End date as YYYY-MM-DD or Unix timestamp.',
+						),
+						'public' => array(
+							'type' => 'integer',
+							'description' => '0 = private project, 1 = public project.',
+							'enum' => array(0, 1),
+						),
+						'budget_amount' => array(
+							'type' => 'number',
+							'description' => 'Budget amount.',
+						),
+						'opp_amount' => array(
+							'type' => 'number',
+							'description' => 'Opportunity amount (if opportunities enabled).',
+						),
+						'opp_percent' => array(
+							'type' => 'number',
+							'description' => 'Opportunity probability 0-100.',
+						),
+						'opp_status' => array(
+							'type' => 'integer',
+							'description' => 'Opportunity status ID (llx_c_lead_status).',
+						),
+						'fk_opp_status' => array(
+							'type' => 'integer',
+							'description' => 'Alias of opp_status.',
+						),
+						'usage_opportunity' => array(
+							'type' => 'integer',
+							'description' => '1 = treat as opportunity, 0 = no.',
+							'enum' => array(0, 1),
+						),
+						'usage_task' => array(
+							'type' => 'integer',
+							'description' => '1 = enable tasks on this project, 0 = no.',
+							'enum' => array(0, 1),
+						),
+						'usage_bill_time' => array(
+							'type' => 'integer',
+							'description' => '1 = time spent is billable, 0 = no.',
+							'enum' => array(0, 1),
+						),
+						'usage_organize_event' => array(
+							'type' => 'integer',
+							'description' => '1 = enable event organization on this project, 0 = no.',
+							'enum' => array(0, 1),
+						),
+						'note_public' => array(
+							'type' => 'string',
+							'description' => 'Public note.',
+						),
+						'note_private' => array(
+							'type' => 'string',
+							'description' => 'Private internal note.',
+						),
+						'ref_ext' => array(
+							'type' => 'string',
+							'description' => 'External reference / integration key.',
+						),
+						'fk_project' => array(
+							'type' => 'integer',
+							'description' => 'Parent project ID (sub-project).',
+						),
+						'dateo' => array(
+							'type' => 'string',
+							'description' => 'Alias of date_start (YYYY-MM-DD or Unix timestamp).',
+						),
+						'datee' => array(
+							'type' => 'string',
+							'description' => 'Alias of date_end (YYYY-MM-DD or Unix timestamp).',
+						),
+						'date_start_event' => array(
+							'type' => 'string',
+							'description' => 'Event start date (event organization module).',
+						),
+						'date_end_event' => array(
+							'type' => 'string',
+							'description' => 'Event end date (event organization module).',
+						),
+						'location' => array(
+							'type' => 'string',
+							'description' => 'Location / venue.',
+						),
+						'array_options' => array(
+							'type' => 'object',
+							'description' => 'Extrafields object, keys use options_ prefix.',
+							'additionalProperties' => true,
+						),
+					),
 					'required' => array('title'),
 					'additionalProperties' => true,
 				),
 				array('POST', '/projects', 'body', null, null, array('ref' => 'auto'))
 			),
 			'dolibarr_update_project' => self::tool(
-				'Update an existing project. Pass only fields to change. id is required.',
+				'Update an existing project. REQUIRED: id. OPTIONAL (same as create): title, socid, date_start, date_end, public, budget_amount, description, note_public, note_private, etc. Pass only fields to change.',
 				array(
 					'type' => 'object',
 					'properties' => array_merge(
-						array('id' => array('type' => 'integer', 'description' => 'Project ID to update.')),
+						array(
+							'id' => array(
+								'type' => 'integer',
+								'description' => 'REQUIRED. Project ID to update.',
+							),
+						),
 						self::projectWriteProps(true)
 					),
 					'required' => array('id'),
@@ -854,11 +971,14 @@ class DolimcpMcpToolRegistry
 	{
 		$list = array();
 		foreach (self::getTools() as $name => $def) {
-			$list[] = array(
+			$item = array(
 				'name' => $name,
 				'description' => $def['description'],
 				'inputSchema' => $def['inputSchema'],
 			);
+			// Some MCP clients also read "parameters" as an alias of inputSchema.
+			$item['parameters'] = $def['inputSchema'];
+			$list[] = $item;
 		}
 		return $list;
 	}
